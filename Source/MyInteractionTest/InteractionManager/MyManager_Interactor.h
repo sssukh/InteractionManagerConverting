@@ -20,11 +20,40 @@ class MYINTERACTIONTEST_API UMyManager_Interactor : public UActorComponent
 public:
 	// Sets default values for this component's properties
 	UMyManager_Interactor();
-
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
+	// virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+
+	// Network Events
+public:
+	UFUNCTION(Reliable,Server, WithValidation)
+	void ServerUpdateInteractionTargets(bool Add,UMyManager_InteractionTarget* InteractionTarget);
+
+	UFUNCTION(Reliable,Client)
+	void ClientUpdateInteractionTargets(bool Add,UMyManager_InteractionTarget* InteractionTarget);
+
+	UFUNCTION(Reliable, Server, WithValidation)
+	void ServerUpdatePointsOfInterests(bool Add, UMyManager_InteractionTarget* InteractionTarget);
+
+	UFUNCTION(Reliable, Client)
+	void ClientUpdatePointsOfInterests(bool Add, UMyManager_InteractionTarget* InteractionTarget);
+
+	// Network
+public:
+	// UFUNCTION(Server,Reliable)
+	// UFUNCTION(Client,Reliable)
+	
+	
+	
+protected:
+	UFUNCTION()
+	void OnInteractionTargetUpdatedServerSide(bool Add,UMyManager_InteractionTarget* InteractionTarget);
+	
+	UFUNCTION()
+	void OnInteractionTargetUpdatedClientSide(bool Add,UMyManager_InteractionTarget* InteractionTarget);
+	
 	// Main
 protected:
 	UFUNCTION()
@@ -39,24 +68,43 @@ protected:
 	UFUNCTION()
 	void Update_InteractionKeys();
 	
-	// UFUNCTION()
-	// void Debug_Function();
+	UFUNCTION()
+	void Debug_Function();
 
 	//Interactable
 protected:
 	UFUNCTION()
-	UMyManager_InteractionTarget* Find_Best_Interactable();
-
+	bool IsInteractable(UMyManager_InteractionTarget* ItemToFind);
+	
+	UFUNCTION()
+	UUW_InteractionTarget* FindWidgetByInteractionTarget(UMyManager_InteractionTarget* InteractionTarget);
+	
+	// UFUNCTION()
+	// bool GetInteractionKeys(TArray<FKey>& ReturnKeyRef) const;
+	//
+	// UFUNCTION()
+	// UMyManager_InteractionTarget* Find_Best_Interactable();
+	//
+	// UFUNCTION()
+	// void Update_Best_Interactable(UMyManager_InteractionTarget* NewTarget);
 	
 protected:
 	UPROPERTY()
 	TSubclassOf<UUW_InteractionTarget> InteractionWidgetClass;
 
 
-	
-	
+	// Targets
+protected:
+	// UFUNCTION()
+	// void OnNewTargetSelectedClientSide(UMyManager_InteractionTarget* NewTarget, bool IsSelected);
+	//
+	// UFUNCTION()
+	// void SetTargetHighlighted(UMyManager_InteractionTarget* InteractionTarget, bool IsHighlighted);
+	// Variables
 	// Data
 protected:
+
+	
 	
 
 	
@@ -78,11 +126,14 @@ protected:
 
 	UPROPERTY()
 	TObjectPtr<UUW_InteractionTarget> CurrentInteractionMarker;
+
+	UPROPERTY()
+	TObjectPtr<UMyManager_InteractionTarget> BestInteractionTarget;
 	
 	UPROPERTY()
 	TObjectPtr<APlayerController> OwnerController;
 
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly,Category="Manager Interactor")
 	TArray<FKey> InteractionKeys;
 	
 	UPROPERTY()
@@ -100,12 +151,12 @@ protected:
 	// Main
 protected:
 	UPROPERTY()
-	bool Debug = false;
+	bool Debug = true;
 
 	UPROPERTY()
 	int32 DefaultWidgetPoolSize = 3;
 
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input",meta = (AllowPrivateAccess=true))
 	TObjectPtr<UInputAction> InteractionInputAction;
 	
 };

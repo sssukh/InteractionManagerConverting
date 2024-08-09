@@ -9,7 +9,6 @@
 #include "Components/PostProcessComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "MyManager_InteractionTarget.h"
-#include "Chaos/Utilities.h"
 #include "UserInterface/UW_InteractionTarget.h"
 
 
@@ -30,6 +29,8 @@ UMyManager_Interactor::UMyManager_Interactor()
 	{
 		m_OutlineMaterial = OutlineMaterialRef.Object;
 	}
+
+	PrimaryComponentTick.bCanEverTick = true;
 }
 
 
@@ -44,6 +45,91 @@ void UMyManager_Interactor::BeginPlay()
 	// ...
 
 }
+
+void UMyManager_Interactor::ServerUpdateInteractionTargets_Implementation(bool Add,
+	UMyManager_InteractionTarget* InteractionTarget)
+{
+	OnInteractionTargetUpdatedServerSide(Add,InteractionTarget);
+}
+
+bool UMyManager_Interactor::ServerUpdateInteractionTargets_Validate(bool Add, UMyManager_InteractionTarget* InteractionTarget)
+{
+	// 나중에 내용 확인해야함.
+
+	return true;
+}
+
+void UMyManager_Interactor::ClientUpdateInteractionTargets_Implementation(bool Add,
+	UMyManager_InteractionTarget* InteractionTarget)
+{
+	OnInteractionTargetUpdatedClientSide(Add, InteractionTarget);
+}
+
+void UMyManager_Interactor::ServerUpdatePointsOfInterests_Implementation(bool Add,
+	UMyManager_InteractionTarget* InteractionTarget)
+{
+}
+
+bool UMyManager_Interactor::ServerUpdatePointsOfInterests_Validate(bool Add,
+	UMyManager_InteractionTarget* InteractionTarget)
+{
+	// 나중에 내용 확인해야함.
+	return true;
+}
+
+void UMyManager_Interactor::ClientUpdatePointsOfInterests_Implementation(bool Add,
+	UMyManager_InteractionTarget* InteractionTarget)
+{
+}
+
+
+
+void UMyManager_Interactor::OnInteractionTargetUpdatedServerSide(bool Add,
+                                                                 UMyManager_InteractionTarget* InteractionTarget)
+{
+	if(Add)
+	{
+		if(IsInteractable(InteractionTarget))
+		{
+			ClientUpdateInteractionTargets(true,InteractionTarget);
+
+			InteractionTargets.AddUnique(InteractionTarget);
+		}
+	}
+	else
+	{
+		InteractionTargets.Remove(InteractionTarget);
+		ClientUpdateInteractionTargets(false,InteractionTarget);
+	}
+}
+
+void UMyManager_Interactor::OnInteractionTargetUpdatedClientSide(bool Add,
+	UMyManager_InteractionTarget* InteractionTarget)
+{
+	UUW_InteractionTarget* InteractionWidget = FindWidgetByInteractionTarget(InteractionTarget);
+
+	if(InteractionWidget)
+	{
+		// InteractionWidget->UpdateContentState(InteractionWidget,Add);
+	}
+}
+
+// void UMyManager_Interactor::TickComponent(float DeltaTime, ELevelTick TickType,
+// 	FActorComponentTickFunction* ThisTickFunction)
+// {
+// 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+//
+// 	Debug_Function();
+//
+//
+// 	// Switch Has Authority in Blueprint
+// 	if(GetOwner()->HasAuthority())
+// 	{
+// 		Find_Best_Interactable();
+//
+// 		// Update_Best_Interactable();
+// 	}
+// }
 
 // Call This Event "On Possess" In The Controller If You Dynamically Change Pawns During Gameplay
 // Caches The Controller, Updates The Interaction Keys And Post Process Component
@@ -74,7 +160,7 @@ void UMyManager_Interactor::ConstructPooledMarkerWidgets()
 {
 	if(!InteractionWidgetClass)
 	{
-		//ToDo 로그 추가해주세요.
+		// ToDo 로그 추가해주세요.
 		// !LOG(TEXT("InteractionWidgetClass를 설정하지 않았습니다 꼭 설정해주세요"));
 		return;
 	}
@@ -101,6 +187,7 @@ void UMyManager_Interactor::ConstructPostProcessComponent()
 {
 	PostProcessComponent = Cast<UPostProcessComponent>(OwnerController->GetPawn()->
 		AddComponentByClass(UPostProcessComponent::StaticClass(),true,FTransform::Identity,false));
+	OwnerController->GetPawn()->AddInstanceComponent(PostProcessComponent);
 
 	Outline_DynamicMaterial  = UMaterialInstanceDynamic::Create(m_OutlineMaterial, this );
 
@@ -113,6 +200,7 @@ void UMyManager_Interactor::ConstructPostProcessComponent()
 
 void UMyManager_Interactor::Update_InteractionKeys()
 {
+	// InteractionKey에 값이 들어오게 로직을 수정했다.
 	if(OwnerController->IsLocalPlayerController())
 	{
 		if(UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(OwnerController->GetLocalPlayer()))
@@ -126,53 +214,135 @@ void UMyManager_Interactor::Update_InteractionKeys()
 
 
 
-// void UMyManager_Interactor::Debug_Function()
+void UMyManager_Interactor::Debug_Function()
+{
+	if(Debug)
+	{
+		if(GetOwner()->HasAuthority())
+		{
+			GEngine->AddOnScreenDebugMessage(-1,0.0f,FColor::Blue,FString::Printf(TEXT("Interaction Targets : %d"),InteractionTargets.Num()));
+			GEngine->AddOnScreenDebugMessage(-1,0.0f,FColor::Blue,FString::Printf(TEXT("Point Of Interests : %d"),PointOfInterests.Num()));
+			GEngine->AddOnScreenDebugMessage(-1,0.0f,FColor::Blue,FString::Printf(TEXT("Pending Targets : %d"),PendingTargets.Num()));
+			if(CurrentInteractionMarker)
+				GEngine->AddOnScreenDebugMessage(-1,0.0f,FColor::Blue,FString::Printf(TEXT("Marker : %s"),*CurrentInteractionMarker->GetName()));
+			
+		}
+	}
+}
+
+
+bool UMyManager_Interactor::IsInteractable(UMyManager_InteractionTarget* ItemToFind)
+{
+	return (!(PendingTargets.Contains(ItemToFind)||DeactivatedTargets.Contains(ItemToFind))
+			&&ItemToFind->IsInteractionEnabled());
+}
+
+UUW_InteractionTarget* UMyManager_Interactor::FindWidgetByInteractionTarget(UMyManager_InteractionTarget* InteractionTarget)
+{
+	UUW_InteractionTarget* LocReturn = nullptr;
+	for (UUW_InteractionTarget* Widget : WidgetPool)
+	{
+		if(Widget->WidgetInteractionTarget == InteractionTarget)
+		{
+			LocReturn = Widget;
+		}
+	}
+
+	return LocReturn;
+}
+
+// bool UMyManager_Interactor::GetInteractionKeys(TArray<FKey>& ReturnKeyRef) const
 // {
-// 	if(Debug)
+// 	if(BestInteractionTarget&&BestInteractionTarget->UseCustomKeys)
 // 	{
-// 		if(GetOwner()->HasAuthority())
+// 		ReturnKeyRef = BestInteractionTarget->CustomKeys;
+// 		return ReturnKeyRef.Num()>0;
+// 	}
+// 	
+// 	ReturnKeyRef = InteractionKeys;
+// 	return InteractionKeys.Num()>0;
+// }
+
+
+// UMyManager_InteractionTarget* UMyManager_Interactor::Find_Best_Interactable()
+// {
+// 	double LocDotProduct =0.0;
+//
+// 	UMyManager_InteractionTarget* LocTargetInteractable = nullptr;
+// 	for (UMyManager_InteractionTarget* LocCachedInteractable : InteractionTargets)
+// 	{
+// 		// IsInteractable? 여기있음 IsInteractable로 수정하자.
+// 		// PendingTargets와 DeactivatedTargets에 LocCachedInteractable이 없고 멤버변수 InteractionEnabled가 true이면
+// 		if(!(PendingTargets.Contains(LocCachedInteractable)||DeactivatedTargets.Contains(LocCachedInteractable))
+// 			&&LocCachedInteractable->IsInteractionEnabled())
 // 		{
-// 			GEngine->AddOnScreenDebugMessage(0,0.0f,FColor::Blue,TEXT("Interaction Targets : %d",InteractionTargets.Num()));
-// 			GEngine->AddOnScreenDebugMessage(0,0.0f,FColor::Blue,TEXT("Point Of Interests : %d"),PointOfInterests.Num());
-// 			GEngine->AddOnScreenDebugMessage(0,0.0f,FColor::Blue,(TEXT("Pending Targets : %d"),PendingTargets.Num()));
-// 			GEngine->AddOnScreenDebugMessage(0,0.0f,FColor::Blue,(TEXT("Marker : %s"),*CurrentInteractionMarker->GetName()));
+// 			FVector LocActorOrigin = LocCachedInteractable->MarkerTargetComponent->GetComponentLocation()
+// 									+ LocCachedInteractable->MarkerTargetComponent->GetComponentRotation().RotateVector(LocCachedInteractable->MarkerOffset);
+//
+// 			FVector SubResult = LocActorOrigin-OwnerController->PlayerCameraManager->GetCameraLocation();
+//
+// 			FVector PlayerCameraManagerForwardVector = OwnerController->PlayerCameraManager->GetCameraRotation().Vector();
+//
+// 			double DotResult = FVector::DotProduct(SubResult.GetSafeNormal(0.0001),PlayerCameraManagerForwardVector);
+//
+// 			if(DotResult>0.5&&DotResult>LocDotProduct)
+// 			{
+// 				LocDotProduct = DotResult;
+// 				LocTargetInteractable = LocCachedInteractable;
+// 			}
+// 		}
+// 	}
+//
+// 	return LocTargetInteractable;
+// }
+//
+// void UMyManager_Interactor::Update_Best_Interactable(UMyManager_InteractionTarget* NewTarget)
+// {
+// 	if(NewTarget)
+// 	{
+// 		if(NewTarget!=BestInteractionTarget)
+// 		{
+// 			if(BestInteractionTarget)
+// 			{
+// 				// ClientSetNewTarget
+// 			}
+// 		}
+// 	}
+// 	else
+// 	{
+// 		
+// 	}
+// }
+
+// void UMyManager_Interactor::OnNewTargetSelectedClientSide(UMyManager_InteractionTarget* NewTarget, bool IsSelected)
+// {
+// 	if(NewTarget)
+// 	{
+// 		BestInteractionTarget = NewTarget;
+//
+// 		if(IsSelected)
+// 		{
+// 			SetTargetHighlighted(BestInteractionTarget,true);
+//
+// 			CurrentInteractionMarker = Find_Widget_By_InteractionTarget(BestInteractionTarget);
+//
+// 			TArray<FKey> Keys;
+// 			GetInteractionKeys(Keys);
+//
+// 			// SetInteractionKeyText;
+// 		}
+// 		else
+// 		{
 // 			
 // 		}
 // 	}
 // }
-
-
-
-UMyManager_InteractionTarget* UMyManager_Interactor::Find_Best_Interactable()
-{
-	double LocDotProduct =0.0;
-
-	UMyManager_InteractionTarget* LocTargetInteractable = nullptr;
-	for (UMyManager_InteractionTarget* LocCachedInteractable : InteractionTargets)
-	{
-		// IsInteractable? 여기있음
-		// PendingTargets와 DeactivatedTargets에 LocCachedInteractable이 없고 멤버변수 InteractionEnabled가 true이면
-		if(!(PendingTargets.Contains(LocCachedInteractable)||DeactivatedTargets.Contains(LocCachedInteractable))
-			&&LocCachedInteractable->IsInteractionEnabled())
-		{
-			FVector LocActorOrigin = LocCachedInteractable->MarkerTargetComponent->GetComponentLocation()
-									+ LocCachedInteractable->MarkerTargetComponent->GetComponentRotation().RotateVector(LocCachedInteractable->MarkerOffset);
-
-			FVector SubResult = LocActorOrigin-OwnerController->PlayerCameraManager->GetCameraLocation();
-
-			FVector PlayerCameraManagerForwardVector = OwnerController->PlayerCameraManager->GetCameraRotation().Vector();
-
-			double DotResult = FVector::DotProduct(SubResult.GetSafeNormal(0.0001),PlayerCameraManagerForwardVector);
-
-			if(DotResult>0.5&&DotResult>LocDotProduct)
-			{
-				LocDotProduct = DotResult;
-				LocTargetInteractable = LocCachedInteractable;
-			}
-		}
-	}
-
-	return LocTargetInteractable;
-}
+//
+// void UMyManager_Interactor::SetTargetHighlighted(UMyManager_InteractionTarget* InteractionTarget, bool IsHighlighted)
+// {
+// 	Outline_DynamicMaterial->SetVectorParameterValue(TEXT("OutlineColor"),InteractionTarget->HighlightColor);
+//
+// 	InteractionTarget->SetHighlight(IsHighlighted);
+// }
 
 
