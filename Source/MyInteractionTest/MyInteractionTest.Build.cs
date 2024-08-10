@@ -11,7 +11,7 @@ public class MyInteractionTest : ModuleRules
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
 			"Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput",
-			"UMG"
+			"UMG", "SlateCore"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });

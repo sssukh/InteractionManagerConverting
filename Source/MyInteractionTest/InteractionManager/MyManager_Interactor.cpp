@@ -9,6 +9,8 @@
 #include "Components/PostProcessComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "MyManager_InteractionTarget.h"
+#include "Components/SphereComponent.h"
+
 #include "UserInterface/UW_InteractionTarget.h"
 
 
@@ -46,8 +48,34 @@ void UMyManager_Interactor::BeginPlay()
 
 }
 
-void UMyManager_Interactor::ServerUpdateInteractionTargets_Implementation(bool Add,
+void UMyManager_Interactor::ClientResetData_Implementation()
+{
+	KeyJustPressed = false;
+
+	LastPressedKey = FKey();
+
+	CurrentHoldTime = 0.0f;
+
+	Repeated = 0;
+}
+
+void UMyManager_Interactor::ServerRequestAssignInteractor_Implementation(bool Add,
+                                                                         UMyManager_InteractionTarget* InteractionTarget)
+{
+	if(InteractionTarget)
+	{
+		InteractionTarget->AssignInteractor(Add,OwnerController);
+	}
+}
+
+bool UMyManager_Interactor::ServerRequestAssignInteractor_Validate(bool Add,
 	UMyManager_InteractionTarget* InteractionTarget)
+{
+	return true;
+}
+
+void UMyManager_Interactor::ServerUpdateInteractionTargets_Implementation(bool Add,
+                                                                          UMyManager_InteractionTarget* InteractionTarget)
 {
 	OnInteractionTargetUpdatedServerSide(Add,InteractionTarget);
 }
@@ -65,19 +93,20 @@ void UMyManager_Interactor::ClientUpdateInteractionTargets_Implementation(bool A
 	OnInteractionTargetUpdatedClientSide(Add, InteractionTarget);
 }
 
-void UMyManager_Interactor::ServerUpdatePointsOfInterests_Implementation(bool Add,
+void UMyManager_Interactor::ServerUpdatePointOfInterests_Implementation(bool Add,
 	UMyManager_InteractionTarget* InteractionTarget)
 {
+	OnPointOfInterestUpdatedServerSide(Add,InteractionTarget);
 }
 
-bool UMyManager_Interactor::ServerUpdatePointsOfInterests_Validate(bool Add,
+bool UMyManager_Interactor::ServerUpdatePointOfInterests_Validate(bool Add,
 	UMyManager_InteractionTarget* InteractionTarget)
 {
 	// 나중에 내용 확인해야함.
 	return true;
 }
 
-void UMyManager_Interactor::ClientUpdatePointsOfInterests_Implementation(bool Add,
+void UMyManager_Interactor::ClientUpdatePointOfInterests_Implementation(bool Add,
 	UMyManager_InteractionTarget* InteractionTarget)
 {
 }
@@ -110,8 +139,78 @@ void UMyManager_Interactor::OnInteractionTargetUpdatedClientSide(bool Add,
 
 	if(InteractionWidget)
 	{
-		// InteractionWidget->UpdateContentState(InteractionWidget,Add);
+		 InteractionWidget->UpdateContentState(Add);
 	}
+}
+
+void UMyManager_Interactor::OnPointOfInterestUpdatedServerSide(bool Add,
+	UMyManager_InteractionTarget* InteractionTarget)
+{
+	if(Add)
+	{
+		if(IsInteractable(InteractionTarget))
+		{
+			PointOfInterests.AddUnique(InteractionTarget);
+
+			InteractionTarget->OwnerReference->OnDestroyed.AddDynamic(this,
+				&UMyManager_Interactor::OnInteractionTargetDestroyed);
+
+			ClientUpdatePointOfInterests(true,InteractionTarget);
+		}
+		else
+		{
+			if(InteractionTarget->IsReactivationEnabled())
+			{
+				AddToPendingTargets(InteractionTarget);
+			}
+		}
+	}
+	else
+	{
+		if(InteractionTarget)
+		{
+			PointOfInterests.Remove(InteractionTarget);
+
+			ClientUpdatePointOfInterests(false,InteractionTarget);
+		}
+	}
+}
+
+void UMyManager_Interactor::OnPointOfInterestUpdatedClientSide(bool Add,
+	UMyManager_InteractionTarget* InteractionTarget)
+{
+	if(Add)
+	{
+		InteractionTarget->UpdateWidgetInfo(WidgetScreenMargin,ScreenRadiusPercent);
+
+		if(UUW_InteractionTarget* InteractionWidget = FindEmptyWidget())
+		{
+			InteractionWidget->UpdateInteractionTarget(InteractionTarget);
+		}
+		else
+		{
+			if(OwnerController->IsLocalController())
+			{
+				
+				InteractionWidget = Cast<UUW_InteractionTarget>(CreateWidget(OwnerController,UUW_InteractionTarget::StaticClass()));
+
+				WidgetPool.AddUnique(InteractionWidget);
+
+				InteractionWidget->AddToPlayerScreen();
+
+				InteractionWidget->UpdateInteractionTarget(InteractionTarget);
+			}
+		}
+	}
+	else
+	{
+		if(UUW_InteractionTarget* InteractionWidget = FindWidgetByInteractionTarget(InteractionTarget))
+		{
+			// 그래프에 빈칸을 넣어서 nullptr 넣음
+			InteractionWidget->UpdateInteractionTarget(nullptr);
+		}
+	}
+	
 }
 
 // void UMyManager_Interactor::TickComponent(float DeltaTime, ELevelTick TickType,
@@ -185,17 +284,23 @@ void UMyManager_Interactor::ConstructPooledMarkerWidgets()
 // Adds Post Process Component To The Player Pawn And Sets The Outline Materials Of It
 void UMyManager_Interactor::ConstructPostProcessComponent()
 {
-	PostProcessComponent = Cast<UPostProcessComponent>(OwnerController->GetPawn()->
-		AddComponentByClass(UPostProcessComponent::StaticClass(),true,FTransform::Identity,false));
-	OwnerController->GetPawn()->AddInstanceComponent(PostProcessComponent);
+	// AddComponent가 나중에 값이 잘 적용되지 않는다고 한다. NewObject로 수정이 필요하다.
+	// PostProcessComponent = Cast<UPostProcessComponent>(OwnerController->GetPawn()->
+	// 	AddComponentByClass(UPostProcessComponent::StaticClass(),true,FTransform::Identity,false));
+	// OwnerController->GetPawn()->AddInstanceComponent(PostProcessComponent);
 
-	Outline_DynamicMaterial  = UMaterialInstanceDynamic::Create(m_OutlineMaterial, this );
+	// NewObject로 변경했으니 디버그로 확인하기
+	if(PostProcessComponent = NewObject<UPostProcessComponent>(this->GetOwner(),
+		UPostProcessComponent::StaticClass(),TEXT("PostProcessComponent")))
+	{
+		Outline_DynamicMaterial  = UMaterialInstanceDynamic::Create(m_OutlineMaterial, this );
 
-	FWeightedBlendable TempWeightedBlendable;
-	TempWeightedBlendable.Object = Outline_DynamicMaterial;
-	TempWeightedBlendable.Weight = 1.0f;
+		FWeightedBlendable TempWeightedBlendable;
+		TempWeightedBlendable.Object = Outline_DynamicMaterial;
+		TempWeightedBlendable.Weight = 1.0f;
 	
-	PostProcessComponent->Settings.WeightedBlendables.Array.Add(TempWeightedBlendable);
+		PostProcessComponent->Settings.WeightedBlendables.Array.Add(TempWeightedBlendable);
+	}
 }
 
 void UMyManager_Interactor::Update_InteractionKeys()
@@ -230,6 +335,20 @@ void UMyManager_Interactor::Debug_Function()
 	}
 }
 
+UUW_InteractionTarget* UMyManager_Interactor::FindEmptyWidget()
+{
+	UUW_InteractionTarget* LocReturn = nullptr;
+	for (UUW_InteractionTarget* Widget : WidgetPool)
+	{
+		if(Widget->WidgetInteractionTarget==nullptr)
+		{
+			LocReturn = Widget;
+			break;
+		}
+	}
+	return LocReturn;
+}
+
 
 bool UMyManager_Interactor::IsInteractable(UMyManager_InteractionTarget* ItemToFind)
 {
@@ -250,6 +369,118 @@ UUW_InteractionTarget* UMyManager_Interactor::FindWidgetByInteractionTarget(UMyM
 
 	return LocReturn;
 }
+
+void UMyManager_Interactor::ApplyFinishMethod(UMyManager_InteractionTarget* InteractionTarget,
+	Enum_InteractionResult Result)
+{
+	IsInteracting = false;
+
+	ClientResetData();
+
+	if(OwnerController&&OwnerController->GetPawn())
+	InteractionTarget->OnInteractionEnd.Broadcast(Result,OwnerController->GetPawn());
+
+	if(Result==Enum_InteractionResult::Completed)
+	{
+		// switch (InteractionTarget->FinishMethod)
+		// {
+		// 	
+		// }
+	}
+	else
+	{
+		
+	}
+}
+
+void UMyManager_Interactor::OnInteractionTargetDestroyed(AActor* DestroyedActor)
+{
+}
+
+void UMyManager_Interactor::AddToPendingTargets(UMyManager_InteractionTarget* InteractionTarget)
+{
+	PendingTargets.AddUnique(InteractionTarget);
+
+	ServerUpdatePointOfInterests(false,InteractionTarget);
+
+	ServerUpdateInteractionTargets(false,InteractionTarget);
+
+	if(PendingTargetTimerHandle.IsValid())
+	{
+		GetWorld()->GetTimerManager().SetTimer(PendingTargetTimerHandle,
+			FTimerDelegate::CreateLambda(
+				[&]()
+				{
+					CheckForPendingTargets();
+				}
+				),PendingTargetCheckInteraval,true);
+	}
+}
+
+void UMyManager_Interactor::OnInteractionTargetReactivated(UMyManager_InteractionTarget* InteractionTarget)
+{
+	PendingTargets.Remove(InteractionTarget);
+
+	InteractionTarget->InteractionEnabled=true;
+
+	if(InteractionTarget->AssignedInteractors.Contains(OwnerController))
+	{
+		TArray<UPrimitiveComponent*> LocPawnOverlappingComponents;
+		
+		OwnerController->GetPawn()->GetOverlappingComponents(LocPawnOverlappingComponents);
+	
+		if(LocPawnOverlappingComponents.Contains(Cast<UPrimitiveComponent>(InteractionTarget->InnerZone)))
+		{
+			ServerUpdatePointOfInterests(true,InteractionTarget);
+	
+			ServerUpdateInteractionTargets(true,InteractionTarget);
+		}
+		else
+		{
+			if(LocPawnOverlappingComponents.Contains(InteractionTarget->OuterZone))
+			{
+				ServerUpdatePointOfInterests(true,InteractionTarget);
+			}
+		}
+	}
+
+	InteractionTarget->OnInteractionReactivated.Broadcast(OwnerController->GetPawn());
+}
+
+void UMyManager_Interactor::AddToDeactivatedTargets(UMyManager_InteractionTarget* InteractionTarget)
+{
+	DeactivatedTargets.AddUnique(InteractionTarget);
+
+	ServerUpdatePointOfInterests(false,InteractionTarget);
+
+	ServerUpdateInteractionTargets(false,InteractionTarget);
+
+	InteractionTarget->OnDeactivated();
+}
+
+void UMyManager_Interactor::CheckForPendingTargets()
+{
+	UMyManager_InteractionTarget* LocCurrentPendingTarget=nullptr;
+	if(!PendingTargets.IsEmpty())
+	{
+		for (UMyManager_InteractionTarget* Target : PendingTargets)
+		{
+			LocCurrentPendingTarget = Target;
+			
+			if(abs(GEngine->GetWorld()->GetTimeSeconds()-LocCurrentPendingTarget->LastInteractedTime)
+				>=LocCurrentPendingTarget->ReactivationDuration)
+			{
+				OnInteractionTargetReactivated(LocCurrentPendingTarget);
+			}
+		}
+	}
+}
+
+void UMyManager_Interactor::RemoveFromDeactivatedTargets(UMyManager_InteractionTarget* InteractionTarget)
+{
+	DeactivatedTargets.Remove(InteractionTarget);
+}
+
 
 // bool UMyManager_Interactor::GetInteractionKeys(TArray<FKey>& ReturnKeyRef) const
 // {

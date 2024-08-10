@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Enums/InteractionManagerEnums.h"
 #include "MyManager_Interactor.generated.h"
 
 class UUW_InteractionTarget;
@@ -28,22 +29,27 @@ protected:
 
 	// Network Events
 public:
-	UFUNCTION(Reliable,Server, WithValidation)
+	UFUNCTION(Unreliable,Server, WithValidation)
 	void ServerUpdateInteractionTargets(bool Add,UMyManager_InteractionTarget* InteractionTarget);
+	
+	UFUNCTION(Unreliable, Server, WithValidation)
+	void ServerUpdatePointOfInterests(bool Add, UMyManager_InteractionTarget* InteractionTarget);
 
-	UFUNCTION(Reliable,Client)
+	UFUNCTION(Unreliable, Client)
+	void ClientResetData();
+	
+	UFUNCTION(Unreliable,Server, WithValidation)
+	void ServerRequestAssignInteractor(bool Add,UMyManager_InteractionTarget* InteractionTarget);
+	
+	UFUNCTION(Unreliable, Client)
+	void ClientUpdatePointOfInterests(bool Add, UMyManager_InteractionTarget* InteractionTarget);
+
+	UFUNCTION(Unreliable,Client)
 	void ClientUpdateInteractionTargets(bool Add,UMyManager_InteractionTarget* InteractionTarget);
-
-	UFUNCTION(Reliable, Server, WithValidation)
-	void ServerUpdatePointsOfInterests(bool Add, UMyManager_InteractionTarget* InteractionTarget);
-
-	UFUNCTION(Reliable, Client)
-	void ClientUpdatePointsOfInterests(bool Add, UMyManager_InteractionTarget* InteractionTarget);
 
 	// Network
 public:
-	// UFUNCTION(Server,Reliable)
-	// UFUNCTION(Client,Reliable)
+	
 	
 	
 	
@@ -53,7 +59,12 @@ protected:
 	
 	UFUNCTION()
 	void OnInteractionTargetUpdatedClientSide(bool Add,UMyManager_InteractionTarget* InteractionTarget);
-	
+
+	UFUNCTION()
+	void OnPointOfInterestUpdatedServerSide(bool Add,UMyManager_InteractionTarget* InteractionTarget);
+
+	UFUNCTION()
+	void OnPointOfInterestUpdatedClientSide(bool Add,UMyManager_InteractionTarget* InteractionTarget);
 	// Main
 protected:
 	UFUNCTION()
@@ -74,6 +85,9 @@ protected:
 	//Interactable
 protected:
 	UFUNCTION()
+	UUW_InteractionTarget* FindEmptyWidget();
+	
+	UFUNCTION()
 	bool IsInteractable(UMyManager_InteractionTarget* ItemToFind);
 	
 	UFUNCTION()
@@ -92,71 +106,125 @@ protected:
 	UPROPERTY()
 	TSubclassOf<UUW_InteractionTarget> InteractionWidgetClass;
 
-
+	// Interaction
+public:
+	UFUNCTION()
+	void ApplyFinishMethod(UMyManager_InteractionTarget* InteractionTarget,Enum_InteractionResult Result);
 	// Targets
-protected:
+public:
+	UFUNCTION()
+	void OnInteractionTargetDestroyed(AActor* DestroyedActor);
+
+	UFUNCTION()
+	void AddToPendingTargets(UMyManager_InteractionTarget* InteractionTarget);
+
+	UFUNCTION()
+	void OnInteractionTargetReactivated(UMyManager_InteractionTarget* InteractionTarget);
+
+	UFUNCTION()
+	void AddToDeactivatedTargets(UMyManager_InteractionTarget* InteractionTarget);
+	
+	UFUNCTION()
+	void CheckForPendingTargets();
+
+	UFUNCTION()
+	void RemoveFromDeactivatedTargets(UMyManager_InteractionTarget* InteractionTarget);
+	
 	// UFUNCTION()
 	// void OnNewTargetSelectedClientSide(UMyManager_InteractionTarget* NewTarget, bool IsSelected);
 	//
 	// UFUNCTION()
 	// void SetTargetHighlighted(UMyManager_InteractionTarget* InteractionTarget, bool IsHighlighted);
+
+	
 	// Variables
 	// Data
-protected:
-
-	
-	
-
+public:
 	
 	// InteractionTarget 으로 교체하기?
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
 	TArray<UMyManager_InteractionTarget*> InteractionTargets;
 
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
 	TArray<UMyManager_InteractionTarget*> PointOfInterests;
 
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
 	TArray<UMyManager_InteractionTarget*> PendingTargets;
-
-	UPROPERTY()
+	
+	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
 	TArray<UMyManager_InteractionTarget*> DeactivatedTargets;
 	
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
 	TArray<UUW_InteractionTarget*> WidgetPool;
 
-	UPROPERTY()
-	TObjectPtr<UUW_InteractionTarget> CurrentInteractionMarker;
-
-	UPROPERTY()
-	TObjectPtr<UMyManager_InteractionTarget> BestInteractionTarget;
-	
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
 	TObjectPtr<APlayerController> OwnerController;
 
-	UPROPERTY(BlueprintReadOnly,Category="Manager Interactor")
-	TArray<FKey> InteractionKeys;
-	
-	UPROPERTY()
-	FTimerHandle BeginUpdateKeysTimerHandle;
-
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
 	TObjectPtr<UPostProcessComponent> PostProcessComponent;
 
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
+	TObjectPtr<UUW_InteractionTarget> CurrentInteractionMarker;
+
+	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
+	TObjectPtr<UMyManager_InteractionTarget> BestInteractionTarget;
+	
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor")
+	TArray<FKey> InteractionKeys;
+
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor")
+	double CurrentHoldTime;
+
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor")
+	double RepeatCooldown;
+
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor")
+	int32 Repeated;
+	
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor")
+	bool IsInteracting;
+
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor")
+	bool KeyJustPressed;
+
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor")
+	bool IsGamePad;
+	
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor")
+	FKey LastPressedKey;
+	
+	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
+	FTimerHandle BeginUpdateKeysTimerHandle;
+
+	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
+	FTimerHandle PendingTargetTimerHandle;
+	
+	
+	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
 	TObjectPtr<UMaterialInstanceDynamic> Outline_DynamicMaterial;
 
-	UPROPERTY(EditAnywhere,BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
 	TObjectPtr<UMaterialInterface> m_OutlineMaterial;
 
 	// Main
 protected:
-	UPROPERTY()
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "Interactor Manager|Main")
 	bool Debug = true;
 
-	UPROPERTY()
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "Interactor Manager|Main")
 	int32 DefaultWidgetPoolSize = 3;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input",meta = (AllowPrivateAccess=true))
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "Interactor Manager|Main")
+	double PendingTargetCheckInteraval;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite,Category = "Interactor Manager|Main",meta = (AllowPrivateAccess=true))
 	TObjectPtr<UInputAction> InteractionInputAction;
-	
+
+	// Marker Setting
+public:
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "Interactor Manager|Marker Setting")
+	FMargin WidgetScreenMargin;
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "Interactor Manager|Marker Setting")
+	double ScreenRadiusPercent;
 };

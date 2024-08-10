@@ -11,17 +11,4 @@ UUW_InteractionTarget::UUW_InteractionTarget(const FObjectInitializer& ObjectIni
 	
 }
 
-void UUW_InteractionTarget::UpdateContentState(bool IsInteraction)
-{
-	ResetProgress();
 
-	if(IsInteraction)
-	{
-		// if(Icon->Brush.GetResourceObject())
-		// {
-		// 	IsInteractionState = true;
-		//
-		// 	
-		// }
-	}
-}
