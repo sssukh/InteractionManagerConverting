@@ -15,6 +15,22 @@ class UMyManager_Interactor;
 class USphereComponent;
 struct FMargin;
 
+USTRUCT(BlueprintType)
+struct FStruct_IconSelector
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(EditAnywhere,BlueprintReadWrite)
+	bool UseMaterialAsTexture;
+	
+	UPROPERTY(EditAnywhere,BlueprintReadWrite)
+	UTexture2D* Texture2D;
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite)
+	TObjectPtr<UMaterialInstance> Material;
+	
+};
+
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnInteractionBegin,/*For Pawn*/APawn*);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FOnInteractionEnd,/*Result*/Enum_InteractionResult,/*For Pawn*/APawn*);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnInteractionUpdated,/*For Pawn*/APawn*);
@@ -95,6 +111,9 @@ public:
 public:
 	UFUNCTION()
 	void OnDeactivated();
+
+	UFUNCTION()
+	void OnAddedToPendingTarget();
 	
 	UFUNCTION()
 	void OnInteractionBeginEvent(APawn* InteractorPawn);
@@ -141,11 +160,51 @@ public:
 	//Marker Settings
 public:
 	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Marker Settings")
-	FVector MarkerOffset;
-	
-	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Marker Settings")
 	FString MarkerComponentName;
 
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Marker Settings")
+	FVector MarkerOffset;
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Marker Settings")
+	bool DisplayProgress = true;
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Marker Settings")
+	bool DisplayTriangle = true;
+	
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Marker Settings")
+	bool FlashPOI_Icon;
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Marker Settings")
+	bool Flash_TargetIcon;
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Marker Settings")
+	bool Rotate_InteractionIcon;
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Marker Settings")
+	FLinearColor Target_IconColor;
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Marker Settings")
+	FLinearColor POI_IconColor;
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Marker Settings")
+	FLinearColor Interaction_IConBackground_Color;
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Marker Settings")
+	FLinearColor Interaction_IconForeground_Color;
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Marker Settings")
+	FStruct_IconSelector Target_ICon;
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Marker Settings")
+	FStruct_IconSelector POI_ICon;
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Marker Settings")
+	FStruct_IconSelector Interaction_Icon_Background;
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Marker Settings")
+	FStruct_IconSelector Interaction_Icon_Foreground;
+	
+	
 	// Highlight Settings
 public:
 	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Highlight Settings")

@@ -26,12 +26,17 @@ void UMyManager_InteractionTarget::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// Setting Owner
 	ConstructOwnerEssentials();
 
+	// Create InnerZone And OuterZone , Set Register
 	ConstructOverlapZones();
 
+	// Find Components to Highlight from Owner's Child Components
 	ConstructHighlightedComponents();
 
+	// Find MarkerTarget from Owner's ChildComponents.
+	// If not, Set Owner's RootComponent
 	SelectMarkerComponent(MarkerComponentName);
 
 	OnInteractionBegin.AddUObject(this, &UMyManager_InteractionTarget::OnInteractionBeginEvent);
@@ -54,7 +59,7 @@ void UMyManager_InteractionTarget::ConstructOwnerEssentials()
 		OwnerReference = GetOwner();
 	}
 }
-
+// InnerZone과 OuterZone 생성 및 Target에 부착
 void UMyManager_InteractionTarget::ConstructOverlapZones()
 {
 	
@@ -124,6 +129,7 @@ void UMyManager_InteractionTarget::ConstructOverlapZones()
 	}
 }
 
+// ComponentsToHighlight에 담긴 이름과 일치하는 Component가 있으면 HighlightedComponents에 추가
 void UMyManager_InteractionTarget::ConstructHighlightedComponents()
 {
 	if(GetOwner())
@@ -155,6 +161,8 @@ void UMyManager_InteractionTarget::ConstructHighlightedComponents()
 	
 }
 
+// Find Interactor Component from Overlapped Actor and ServerUpdateInteractionTarget
+// Update Widget in Client, Add InteractionTargets in server
 void UMyManager_InteractionTarget::OnInnerZoneBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
                                                            UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
@@ -318,6 +326,24 @@ void UMyManager_InteractionTarget::OnDeactivated()
 	OuterZone->SetHiddenInGame(true);
 }
 
+void UMyManager_InteractionTarget::OnAddedToPendingTarget()
+{
+	if(GetWorld())
+	{
+		UMyManager_Interactor* LocCurrentInteractor=nullptr;
+		LastInteractedTime = GetWorld()->GetTimeSeconds();
+
+		for (AController* Interactor : AssignedInteractors)
+		{
+			LocCurrentInteractor = GetInteractorManager(Interactor);
+
+			LocCurrentInteractor->AddToPendingTargets(this);
+		}
+
+		InteractionEnabled=false;
+	}
+}
+
 void UMyManager_InteractionTarget::OnInteractionBeginEvent(APawn* InteractorPawn)
 {
 	if( GetOwner()&&GetOwner()->HasAuthority())
@@ -355,7 +381,7 @@ void UMyManager_InteractionTarget::OnInteractionEndEvent(Enum_InteractionResult 
 						{
 							LocCurrentInteractor->RemoveFromDeactivatedTargets(this);
 
-							
+							LocCurrentInteractor->ApplyFinishMethod(this,Result);
 						}
 					}
 				}

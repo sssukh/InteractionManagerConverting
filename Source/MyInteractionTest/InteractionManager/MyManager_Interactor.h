@@ -47,6 +47,8 @@ public:
 	UFUNCTION(Unreliable,Client)
 	void ClientUpdateInteractionTargets(bool Add,UMyManager_InteractionTarget* InteractionTarget);
 
+	UFUNCTION(Reliable,Client)
+	void ClientOnInteractionTargetDestroyed(UMyManager_InteractionTarget* InteractionTarget);
 	// Network
 public:
 	

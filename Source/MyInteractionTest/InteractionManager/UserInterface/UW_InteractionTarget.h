@@ -36,20 +36,61 @@ public:
 	UUW_InteractionTarget(const FObjectInitializer& ObjectInitializer);
 
 public:
-	UFUNCTION(BlueprintImplementableEvent,Category="UW Interaction Taget Event")
+	UFUNCTION(BlueprintImplementableEvent,BlueprintCallable,Category="UW Interaction Taget Event")
 	void UpdateInteractionTarget(UMyManager_InteractionTarget* InteractionTarget);
-	
-	UFUNCTION(BlueprintImplementableEvent,Category="UW Interaction Taget Event")
-	void UpdateInteractionText(bool Immediately, Enum_InteractionState InteractionState);
-	
-	UFUNCTION(BlueprintImplementableEvent,Category="UW Interaction Taget Event")
+
+	UFUNCTION(BlueprintImplementableEvent,BlueprintCallable,Category="UW Interaction Taget Event")
+	bool IsOnScreen(FMargin Margin);
+
+	UFUNCTION(BlueprintImplementableEvent,BlueprintCallable,Category="UW Interaction Taget Event")
+	void SetBrushFromTarget();
+
+	UFUNCTION(BlueprintImplementableEvent,BlueprintCallable,Category="UW Interaction Taget Event")
+	void UpdatePositionInViewport();
+
+	UFUNCTION(BlueprintImplementableEvent,BlueprintCallable,Category="UW Interaction Taget Event")
 	void UpdateContentState(bool IsInteraction);
-	
-	UFUNCTION(BlueprintImplementableEvent,Category="UW Interaction Taget Event")
+
+	UFUNCTION(BlueprintImplementableEvent,BlueprintCallable,Category="UW Interaction Taget Event")
+	void OnSlideUpAnimFinished();
+
+	UFUNCTION(BlueprintImplementableEvent,BlueprintCallable,Category="UW Interaction Taget Event")
+	void OnSlideUpAnimStarted();
+
+	UFUNCTION(BlueprintImplementableEvent,BlueprintCallable,Category="UW Interaction Taget Event")
+	void ToggleLootText(bool Visible);
+
+	UFUNCTION(BlueprintImplementableEvent,BlueprintCallable,Category="UW Interaction Taget Event")
+	void SetInteractionPercent(double InCurrentPercent);
+
+	UFUNCTION(BlueprintImplementableEvent,BlueprintCallable,Category="UW Interaction Taget Event")
 	void SetInteractionKeyText(FKey Key);
 
+	UFUNCTION(BlueprintImplementableEvent,BlueprintCallable,Category="UW Interaction Taget Event")
+	void SetInteractionText();
+
+	UFUNCTION(BlueprintImplementableEvent,BlueprintCallable,Category="UW Interaction Taget Event")
+	void OnWidgetNewTarget(bool IsNewTarget);
+
+	UFUNCTION(BlueprintImplementableEvent,BlueprintCallable,Category="UW Interaction Taget Event")
+	void PlayFlashAnimation(bool Condition);
+
+	UFUNCTION(BlueprintImplementableEvent,BlueprintCallable, Category="UW Interaction Taget Event")
+	void PlayInteractionCompletedAnimation(Enum_InteractionResult Result);
+
+	UFUNCTION(BlueprintImplementableEvent,BlueprintCallable, Category="UW Interaction Taget Event")
+	void PlayInteractionUpdateAnimation();
 	
-	UFUNCTION(BlueprintImplementableEvent,Category = "UW Interaction Target Event")
+	UFUNCTION(BlueprintImplementableEvent,BlueprintCallable, Category="UW Interaction Taget Event")
+	void UpdateInteractionText(bool Immediately, Enum_InteractionState InteractionState);
+	
+	UFUNCTION(BlueprintImplementableEvent,BlueprintCallable, Category="UW Interaction Taget Event")
+	void SetControllerScreenSettings(UMyManager_InteractionTarget* InteractionManager);
+
+	UFUNCTION(BlueprintImplementableEvent,BlueprintCallable,Category="UW Interaction Taget Event")
+	void ClearWidgetData();
+	
+	UFUNCTION(BlueprintImplementableEvent,BlueprintCallable,Category = "UW Interaction Target Event")
 	void ResetProgress();
 	
 public:

@@ -109,12 +109,20 @@ bool UMyManager_Interactor::ServerUpdatePointOfInterests_Validate(bool Add,
 void UMyManager_Interactor::ClientUpdatePointOfInterests_Implementation(bool Add,
 	UMyManager_InteractionTarget* InteractionTarget)
 {
+	OnPointOfInterestUpdatedClientSide(Add,InteractionTarget);
 }
 
 
+void UMyManager_Interactor::ClientOnInteractionTargetDestroyed_Implementation(
+	UMyManager_InteractionTarget* InteractionTarget)
+{
+	CurrentInteractionMarker->UpdateInteractionTarget(nullptr);
+}
 
+// Add : Begin Overlap -> true, End overlap -> false
+// Add InteractionTarget.
 void UMyManager_Interactor::OnInteractionTargetUpdatedServerSide(bool Add,
-                                                                 UMyManager_InteractionTarget* InteractionTarget)
+	UMyManager_InteractionTarget* InteractionTarget)
 {
 	if(Add)
 	{
@@ -132,6 +140,7 @@ void UMyManager_Interactor::OnInteractionTargetUpdatedServerSide(bool Add,
 	}
 }
 
+// Find Widget and Update Content
 void UMyManager_Interactor::OnInteractionTargetUpdatedClientSide(bool Add,
 	UMyManager_InteractionTarget* InteractionTarget)
 {
@@ -142,7 +151,10 @@ void UMyManager_Interactor::OnInteractionTargetUpdatedClientSide(bool Add,
 		 InteractionWidget->UpdateContentState(Add);
 	}
 }
-
+// Add Point Of Interestd
+// Add OnDestroy Delegate
+// Client Update Point of Interest
+// Delete Every InteractionTargets And Widget In Interactor's Interacting Array
 void UMyManager_Interactor::OnPointOfInterestUpdatedServerSide(bool Add,
 	UMyManager_InteractionTarget* InteractionTarget)
 {
@@ -382,19 +394,74 @@ void UMyManager_Interactor::ApplyFinishMethod(UMyManager_InteractionTarget* Inte
 
 	if(Result==Enum_InteractionResult::Completed)
 	{
-		// switch (InteractionTarget->FinishMethod)
-		// {
-		// 	
-		// }
+		switch (InteractionTarget->FinishMethod)
+		{
+		case Enum_InteractionFinishMethod::DestroyOnComplete:
+		case Enum_InteractionFinishMethod::DestroyOnCompletedOrCanceled:
+		case Enum_InteractionFinishMethod::DeactivateOnCanceledDestroyOnCompleted:
+		case Enum_InteractionFinishMethod::ReactivateAfterDurationOnCanceledDestroyOnCompleted:
+			InteractionTarget->OwnerReference->Destroy();
+			break;
+		case Enum_InteractionFinishMethod::ReactivateAfterDurationOnCompleted:
+		case Enum_InteractionFinishMethod::ReactivateAfterDurationOnCompletedOrCanceled:
+		case Enum_InteractionFinishMethod::ReactivateAfterDurationOnCompletedDestroyOnCanceled:
+		case Enum_InteractionFinishMethod::DeactivateOnCanceledReactivateAfterDurationOnCompleted:
+		case Enum_InteractionFinishMethod::ReactivateAfterDurationOnCompletedDeactivateOnCanceled:
+			InteractionTarget->OnAddedToPendingTarget();
+			break;
+
+		case Enum_InteractionFinishMethod::ReactivateAfterDurationOnCanceledDeactivateOnCompleted:
+		case Enum_InteractionFinishMethod::DeactivateOnCompleted:
+		case Enum_InteractionFinishMethod::DeactivateOnCompletedOrCanceled:
+		case Enum_InteractionFinishMethod::DeactivateOnCompletedDestroyOnCanceled:
+		case Enum_InteractionFinishMethod::DeactivateOnCompletedReactivateAfterDurationOnCanceled:
+			AddToDeactivatedTargets(InteractionTarget);
+			break;
+		default:
+			break;
+		}
 	}
 	else
 	{
-		
+		switch (InteractionTarget->FinishMethod)
+		{
+		case Enum_InteractionFinishMethod::DestroyOnCanceled:
+		case Enum_InteractionFinishMethod::DestroyOnCompletedOrCanceled:
+		case Enum_InteractionFinishMethod::DeactivateOnCompletedDestroyOnCanceled:
+		case Enum_InteractionFinishMethod::ReactivateAfterDurationOnCompletedDestroyOnCanceled:
+			InteractionTarget->OwnerReference->Destroy();
+			break;
+		case Enum_InteractionFinishMethod::ReactivateAfterDurationOnCanceled:
+		case Enum_InteractionFinishMethod::ReactivateAfterDurationOnCompletedOrCanceled:
+		case Enum_InteractionFinishMethod::ReactivateAfterDurationOnCanceledDestroyOnCompleted:
+		case Enum_InteractionFinishMethod::ReactivateAfterDurationOnCanceledDeactivateOnCompleted:
+		case Enum_InteractionFinishMethod::DeactivateOnCompletedReactivateAfterDurationOnCanceled:
+			InteractionTarget->OnAddedToPendingTarget();
+			break;
+		case Enum_InteractionFinishMethod::DeactivateOnCanceled:
+		case Enum_InteractionFinishMethod::DeactivateOnCompletedOrCanceled:
+		case Enum_InteractionFinishMethod::ReactivateAfterDurationOnCompletedDeactivateOnCanceled:
+		case Enum_InteractionFinishMethod::DeactivateOnCanceledDestroyOnCompleted:
+		case Enum_InteractionFinishMethod::DeactivateOnCanceledReactivateAfterDurationOnCompleted:
+			AddToDeactivatedTargets(InteractionTarget);
+			break;
+		default:
+			break;
+		}
 	}
 }
 
 void UMyManager_Interactor::OnInteractionTargetDestroyed(AActor* DestroyedActor)
 {
+	UMyManager_InteractionTarget* LocTarget = nullptr;
+
+	LocTarget = Cast<UMyManager_InteractionTarget>(DestroyedActor->GetComponentByClass(UMyManager_InteractionTarget::StaticClass()));
+
+	InteractionTargets.Remove(LocTarget);
+
+	PointOfInterests.Remove(LocTarget);
+
+	ClientOnInteractionTargetDestroyed(LocTarget);
 }
 
 void UMyManager_Interactor::AddToPendingTargets(UMyManager_InteractionTarget* InteractionTarget)
