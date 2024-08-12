@@ -147,7 +147,7 @@ void UMyManager_InteractionTarget::ConstructHighlightedComponents()
 		LocOwnerRoot->GetChildrenComponents(true,ChildComponents);
 		for (USceneComponent* Child : ChildComponents)
 		{
-			if(UPrimitiveComponent* LocChildPrimitive = Cast<UPrimitiveComponent>(LocOwnerRoot))
+			if(UPrimitiveComponent* LocChildPrimitive = Cast<UPrimitiveComponent>(Child))
 			{
 				if(ComponentsToHighlight.Contains(LocChildPrimitive->GetName()))
 				{
@@ -312,6 +312,32 @@ bool UMyManager_InteractionTarget::IsReactivationEnabled()
 		return true;
 	default :
 		return false;
+	}
+}
+
+bool UMyManager_InteractionTarget::CancelOnRelease()
+{
+	switch(FinishMethod)
+	{
+	case Enum_InteractionFinishMethod::DestroyOnCanceled:
+	case Enum_InteractionFinishMethod::DestroyOnCompletedOrCanceled:
+	case Enum_InteractionFinishMethod::ReactivateAfterDurationOnCanceled:
+	case Enum_InteractionFinishMethod::ReactivateAfterDurationOnCompletedOrCanceled:
+	case Enum_InteractionFinishMethod::ReactivateAfterDurationOnCanceledDestroyOnCompleted:
+	case Enum_InteractionFinishMethod::ReactivateAfterDurationOnCanceledDeactivateOnCompleted:
+	case Enum_InteractionFinishMethod::ReactivateAfterDurationOnCompletedDestroyOnCanceled:
+	case Enum_InteractionFinishMethod::ReactivateAfterDurationOnCompletedDeactivateOnCanceled:
+	case Enum_InteractionFinishMethod::DeactivateOnCanceled:
+	case Enum_InteractionFinishMethod::DeactivateOnCompletedOrCanceled:
+	case Enum_InteractionFinishMethod::DeactivateOnCanceledDestroyOnCompleted:
+	case Enum_InteractionFinishMethod::DeactivateOnCanceledReactivateAfterDurationOnCompleted:
+	case Enum_InteractionFinishMethod::DeactivateOnCompletedDestroyOnCanceled:
+	case Enum_InteractionFinishMethod::DeactivateOnCompletedReactivateAfterDurationOnCanceled:
+		return true;
+		break;
+	default:
+		return false;
+		break;
 	}
 }
 

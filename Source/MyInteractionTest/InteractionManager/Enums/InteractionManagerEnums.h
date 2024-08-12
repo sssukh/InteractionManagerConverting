@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 UENUM()
-enum class Enum_InteractionFinishMethod
+enum class Enum_InteractionFinishMethod :uint32
 {
 	DestroyOnComplete,
 	DestroyOnCanceled,
@@ -22,18 +22,35 @@ enum class Enum_InteractionFinishMethod
 	DeactivateOnCompletedReactivateAfterDurationOnCanceled,
 };
 
-UENUM()
-enum class Enum_InteractionNetworkHandleMethod
+UENUM(BlueprintType)
+enum class Enum_InteractionNetworkHandleMethod : uint8
 {
 	KeepEnabled,
 	DisableWhileInteracting,
 };
 
-UENUM()
-enum class Enum_InteractionResult
+UENUM(BlueprintType)
+enum class Enum_InteractionResult : uint8
 {
 	Completed,
 	Canceled,
+};
+
+UENUM(BlueprintType)
+enum class Enum_InteractionType : uint8
+{
+	Tap,
+	Hold,
+	Repeat,
+};
+
+UENUM(BlueprintType)
+enum class Enum_InteractionState : uint8
+{
+	None,
+	Waiting,
+	Interacting,
+	Done,
 };
 
 struct FInteractionFinishMethod

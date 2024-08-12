@@ -25,10 +25,19 @@ protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
-	// virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 
 	// Network Events
 public:
+	UFUNCTION(Unreliable, Client)
+	void ClientCheckPressedKey();
+	
+	UFUNCTION(Unreliable, Client)
+	void ClientSetNewTarget(UMyManager_InteractionTarget* NewTarget,bool IsSelected);
+
+	UFUNCTION(Unreliable,Server, WithValidation)
+	void ServerOnInteractionFinished(UMyManager_InteractionTarget* InteractionTarget,Enum_InteractionResult Result);
+	
 	UFUNCTION(Unreliable,Server, WithValidation)
 	void ServerUpdateInteractionTargets(bool Add,UMyManager_InteractionTarget* InteractionTarget);
 	
@@ -47,6 +56,15 @@ public:
 	UFUNCTION(Unreliable,Client)
 	void ClientUpdateInteractionTargets(bool Add,UMyManager_InteractionTarget* InteractionTarget);
 
+	UFUNCTION(Unreliable,Server, WithValidation)
+	void ServerOnInteractionBegin(UMyManager_InteractionTarget* InteractionTarget);
+
+	UFUNCTION(Unreliable,Server, WithValidation)
+	void ServerOnInteractionUpdated(UMyManager_InteractionTarget* InteractionTarget,double Alpha,int32 InRepeated,APawn* InteractorPawn);
+	
+	UFUNCTION()
+	void OnInteractionUpdated(UMyManager_InteractionTarget* InteractionTarget,double Alpha, int32 InRepeated);
+	
 	UFUNCTION(Reliable,Client)
 	void ClientOnInteractionTargetDestroyed(UMyManager_InteractionTarget* InteractionTarget);
 	// Network
@@ -95,21 +113,20 @@ protected:
 	UFUNCTION()
 	UUW_InteractionTarget* FindWidgetByInteractionTarget(UMyManager_InteractionTarget* InteractionTarget);
 	
-	// UFUNCTION()
-	// bool GetInteractionKeys(TArray<FKey>& ReturnKeyRef) const;
-	//
-	// UFUNCTION()
-	// UMyManager_InteractionTarget* Find_Best_Interactable();
-	//
-	// UFUNCTION()
-	// void Update_Best_Interactable(UMyManager_InteractionTarget* NewTarget);
+	UFUNCTION()
+	bool GetInteractionKeys(TArray<FKey>& ReturnKeyRef) const;
 	
-protected:
-	UPROPERTY()
-	TSubclassOf<UUW_InteractionTarget> InteractionWidgetClass;
-
+	UFUNCTION()
+	UMyManager_InteractionTarget* FindBestInteractable();
+	
+	UFUNCTION()
+	void UpdateBestInteractable(UMyManager_InteractionTarget* NewTarget);
+	
 	// Interaction
 public:
+	UFUNCTION()
+	void TryTakeInteraction();
+	
 	UFUNCTION()
 	void ApplyFinishMethod(UMyManager_InteractionTarget* InteractionTarget,Enum_InteractionResult Result);
 	// Targets
@@ -132,11 +149,11 @@ public:
 	UFUNCTION()
 	void RemoveFromDeactivatedTargets(UMyManager_InteractionTarget* InteractionTarget);
 	
-	// UFUNCTION()
-	// void OnNewTargetSelectedClientSide(UMyManager_InteractionTarget* NewTarget, bool IsSelected);
-	//
-	// UFUNCTION()
-	// void SetTargetHighlighted(UMyManager_InteractionTarget* InteractionTarget, bool IsHighlighted);
+	UFUNCTION()
+	void OnNewTargetSelectedClientSide(UMyManager_InteractionTarget* NewTarget, bool IsSelected);
+	
+	UFUNCTION()
+	void SetTargetHighlighted(UMyManager_InteractionTarget* InteractionTarget, bool IsHighlighted);
 
 	
 	// Variables
@@ -144,72 +161,72 @@ public:
 public:
 	
 	// InteractionTarget 으로 교체하기?
-	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor|Data")
 	TArray<UMyManager_InteractionTarget*> InteractionTargets;
 
-	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor|Data")
 	TArray<UMyManager_InteractionTarget*> PointOfInterests;
 
-	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor|Data")
 	TArray<UMyManager_InteractionTarget*> PendingTargets;
 	
-	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor|Data")
 	TArray<UMyManager_InteractionTarget*> DeactivatedTargets;
 	
-	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor|Data")
 	TArray<UUW_InteractionTarget*> WidgetPool;
 
-	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor|Data")
 	TObjectPtr<APlayerController> OwnerController;
 
-	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor|Data")
 	TObjectPtr<UPostProcessComponent> PostProcessComponent;
 
-	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor|Data")
 	TObjectPtr<UUW_InteractionTarget> CurrentInteractionMarker;
 
-	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor|Data")
 	TObjectPtr<UMyManager_InteractionTarget> BestInteractionTarget;
 	
-	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor")
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor|Data")
 	TArray<FKey> InteractionKeys;
 
-	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor")
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor|Data")
 	double CurrentHoldTime;
 
-	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor")
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor|Data")
 	double RepeatCooldown;
 
-	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor")
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor|Data")
 	int32 Repeated;
 	
-	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor")
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor|Data")
 	bool IsInteracting;
 
-	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor")
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor|Data")
 	bool KeyJustPressed;
 
-	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor")
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor|Data")
 	bool IsGamePad;
 	
-	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor")
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor|Data")
 	FKey LastPressedKey;
 	
-	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor|Data")
 	FTimerHandle BeginUpdateKeysTimerHandle;
 
-	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor|Data")
 	FTimerHandle PendingTargetTimerHandle;
 	
 	
-	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor|Data")
 	TObjectPtr<UMaterialInstanceDynamic> Outline_DynamicMaterial;
 
-	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor|Data")
 	TObjectPtr<UMaterialInterface> m_OutlineMaterial;
 
 	// Main
-protected:
+public:
 	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "Interactor Manager|Main")
 	bool Debug = true;
 

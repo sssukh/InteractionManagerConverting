@@ -33,7 +33,7 @@ public:
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnInteractionBegin,/*For Pawn*/APawn*);
 DECLARE_MULTICAST_DELEGATE_TwoParams(FOnInteractionEnd,/*Result*/Enum_InteractionResult,/*For Pawn*/APawn*);
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnInteractionUpdated,/*For Pawn*/APawn*);
+DECLARE_MULTICAST_DELEGATE_ThreeParams(FOnInteractionUpdated,/*Alpha*/double,/*Repeated*/int32,/*InteractorPawn*/APawn*);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnInteractionReactivated,/*For Pawn*/APawn*);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnInteractionDeactivated,/*For Pawn*/APawn*);
 
@@ -106,6 +106,9 @@ public:
 
 	UFUNCTION()
 	bool IsReactivationEnabled();
+
+	UFUNCTION()
+	bool CancelOnRelease();
 
 	// Binded Actions
 public:
@@ -216,8 +219,11 @@ public:
 	// Interaction Settings
 public:
 	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Interaction Settings")
+	TMap<Enum_InteractionState,FText> InteractionText; 
+	
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Interaction Settings")
 	FString InteractionZone_ComponentToAttach;
-
+	
 	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Interaction Settings")
 	double InnerZoneRadius;
 	
@@ -225,7 +231,22 @@ public:
 	double OuterZoneExtent;
 
 	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Interaction Settings")
+	Enum_InteractionType InteractionType;
+	
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Interaction Settings")
 	Enum_InteractionNetworkHandleMethod NetworkHandleMethod;
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Interaction Settings")
+	double HoldSeconds;
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Interaction Settings")
+	int32 RepeatCount;
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Interaction Settings")
+	double RepeatCooldown;
+
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Interaction Settings")
+	bool CooldownEnabled;
 	// Key Settings
 public:
 	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|Key Settings")
@@ -245,6 +266,6 @@ public:
 	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|On Finished")
 	double ReactivationDuration;
 public:
-	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget|On Finished")
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "InteractionTarget")
 	bool EnableDebug = true;
 };

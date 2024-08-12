@@ -6,20 +6,13 @@
 #include "Blueprint/UserWidget.h"
 #include "Layout/Margin.h"
 #include "MyInteractionTest/InteractionManager/MyManager_InteractionTarget.h"
+#include "../Enums/InteractionManagerEnums.h"
 #include "UW_InteractionTarget.generated.h"
 
 class UOverlay;
 class UHorizontalBox;
 class UGridPanel;
 
-UENUM()
-enum class Enum_InteractionState
-{
-	None,
-	Waiting,
-	Interacting,
-	Done
-};
 
 class UTextBlock;
 class UBorder;
