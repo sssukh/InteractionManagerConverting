@@ -67,24 +67,6 @@ public:
 	
 	UFUNCTION(Reliable,Client)
 	void ClientOnInteractionTargetDestroyed(UMyManager_InteractionTarget* InteractionTarget);
-	// Network
-public:
-	
-	
-	
-	
-protected:
-	UFUNCTION()
-	void OnInteractionTargetUpdatedServerSide(bool Add,UMyManager_InteractionTarget* InteractionTarget);
-	
-	UFUNCTION()
-	void OnInteractionTargetUpdatedClientSide(bool Add,UMyManager_InteractionTarget* InteractionTarget);
-
-	UFUNCTION()
-	void OnPointOfInterestUpdatedServerSide(bool Add,UMyManager_InteractionTarget* InteractionTarget);
-
-	UFUNCTION()
-	void OnPointOfInterestUpdatedClientSide(bool Add,UMyManager_InteractionTarget* InteractionTarget);
 	// Main
 protected:
 	UFUNCTION()
@@ -95,12 +77,12 @@ protected:
 
 	UFUNCTION()
 	void ConstructPostProcessComponent();
-
-	UFUNCTION()
-	void Update_InteractionKeys();
 	
 	UFUNCTION()
 	void Debug_Function();
+
+protected:
+	void HandleTryRepeat();
 
 	//Interactable
 protected:
@@ -108,10 +90,10 @@ protected:
 	UUW_InteractionTarget* FindEmptyWidget();
 	
 	UFUNCTION()
-	bool IsInteractable(UMyManager_InteractionTarget* ItemToFind);
-	
-	UFUNCTION()
 	UUW_InteractionTarget* FindWidgetByInteractionTarget(UMyManager_InteractionTarget* InteractionTarget);
+
+	UFUNCTION()
+	bool IsInteractable(UMyManager_InteractionTarget* ItemToFind);
 	
 	UFUNCTION()
 	bool GetInteractionKeys(TArray<FKey>& ReturnKeyRef) const;
@@ -121,6 +103,9 @@ protected:
 	
 	UFUNCTION()
 	void UpdateBestInteractable(UMyManager_InteractionTarget* NewTarget);
+
+	UFUNCTION()
+	void UpdateInteractionKeys();
 	
 	// Interaction
 public:
@@ -129,6 +114,10 @@ public:
 	
 	UFUNCTION()
 	void ApplyFinishMethod(UMyManager_InteractionTarget* InteractionTarget,Enum_InteractionResult Result);
+
+	UFUNCTION()
+	void ReceiveAnyKey(FKey Key);
+	
 	// Targets
 public:
 	UFUNCTION()
@@ -155,6 +144,19 @@ public:
 	UFUNCTION()
 	void SetTargetHighlighted(UMyManager_InteractionTarget* InteractionTarget, bool IsHighlighted);
 
+	// Network
+public:
+	UFUNCTION()
+	void OnInteractionTargetUpdatedServerSide(bool Add,UMyManager_InteractionTarget* InteractionTarget);
+	
+	UFUNCTION()
+	void OnInteractionTargetUpdatedClientSide(bool Add,UMyManager_InteractionTarget* InteractionTarget);
+
+	UFUNCTION()
+	void OnPointOfInterestUpdatedServerSide(bool Add,UMyManager_InteractionTarget* InteractionTarget);
+
+	UFUNCTION()
+	void OnPointOfInterestUpdatedClientSide(bool Add,UMyManager_InteractionTarget* InteractionTarget);
 	
 	// Variables
 	// Data
@@ -222,8 +224,7 @@ public:
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor|Data")
 	TObjectPtr<UMaterialInstanceDynamic> Outline_DynamicMaterial;
 
-	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Manager Interactor|Data")
-	TObjectPtr<UMaterialInterface> m_OutlineMaterial;
+
 
 	// Main
 public:
@@ -231,14 +232,13 @@ public:
 	bool Debug = true;
 
 	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "Interactor Manager|Main")
-	int32 DefaultWidgetPoolSize = 3;
+	int32 DefaultWidgetPoolSize;
 
 	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "Interactor Manager|Main")
 	double PendingTargetCheckInteraval;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite,Category = "Interactor Manager|Main",meta = (AllowPrivateAccess=true))
-	TObjectPtr<UInputAction> InteractionInputAction;
 
+	
 	// Marker Setting
 public:
 	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "Interactor Manager|Marker Setting")
@@ -246,4 +246,14 @@ public:
 
 	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "Interactor Manager|Marker Setting")
 	double ScreenRadiusPercent;
+
+public:
+	UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Manager Interactor|Config|Essential")
+	TSubclassOf<UUW_InteractionTarget> InteractionTargetWidgetBP;
+
+	UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Manager Interactor|Config|Essential")
+	TObjectPtr<UMaterialInterface> m_OutlineMaterial;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite,Category="Manager Interactor|Config|Essential",meta = (AllowPrivateAccess=true))
+	TObjectPtr<UInputAction> InteractionInputAction;;
 };

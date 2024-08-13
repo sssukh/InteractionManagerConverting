@@ -39,9 +39,8 @@ void UMyManager_InteractionTarget::BeginPlay()
 	// If not, Set Owner's RootComponent
 	SelectMarkerComponent(MarkerComponentName);
 
-	OnInteractionBegin.AddUObject(this, &UMyManager_InteractionTarget::OnInteractionBeginEvent);
-	// ...
-	OnInteractionEnd.AddUObject(this, &UMyManager_InteractionTarget::OnInteractionEndEvent);
+	OnInteractionBegin.AddDynamic(this, &UMyManager_InteractionTarget::OnInteractionBeginEvent);
+	OnInteractionEnd.AddDynamic(this, &UMyManager_InteractionTarget::OnInteractionEndEvent);
 }
 
 UMyManager_Interactor* UMyManager_InteractionTarget::GetInteractorManager(AController* Controller)
@@ -425,6 +424,32 @@ void UMyManager_InteractionTarget::AssignInteractor(bool Add, AController* Inter
 	else
 	{
 		AssignedInteractors.Remove(Interactor);
+	}
+}
+
+void UMyManager_InteractionTarget::EnableInteraction(bool Enable)
+{
+	InteractionEnabled = Enable;
+
+	if(Enable)
+	{
+		for (AController* Interactor : AssignedInteractors)
+		{
+			UMyManager_Interactor* InteractorManager = GetInteractorManager(Interactor);
+
+			InteractorManager->RemoveFromDeactivatedTargets(this);
+
+			InteractorManager->OnInteractionTargetReactivated(this);
+		}
+	}
+	else
+	{
+		for (AController* Interactor : AssignedInteractors)
+		{
+			UMyManager_Interactor* InteractorManager = GetInteractorManager(Interactor);
+
+			InteractorManager->AddToDeactivatedTargets(this);
+		}
 	}
 }
 

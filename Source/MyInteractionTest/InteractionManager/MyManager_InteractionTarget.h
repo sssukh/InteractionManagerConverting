@@ -31,11 +31,11 @@ public:
 	
 };
 
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnInteractionBegin,/*For Pawn*/APawn*);
-DECLARE_MULTICAST_DELEGATE_TwoParams(FOnInteractionEnd,/*Result*/Enum_InteractionResult,/*For Pawn*/APawn*);
-DECLARE_MULTICAST_DELEGATE_ThreeParams(FOnInteractionUpdated,/*Alpha*/double,/*Repeated*/int32,/*InteractorPawn*/APawn*);
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnInteractionReactivated,/*For Pawn*/APawn*);
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnInteractionDeactivated,/*For Pawn*/APawn*);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInteractionBegin,APawn*,InPawn);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnInteractionEnd,Enum_InteractionResult,InteractionResult,APawn*,InteractionPawn);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnInteractionUpdated,double,InAlpha,int32,Repeated,APawn*,InteractorPawn);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInteractionReactivated,APawn*,InteractorPawn);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInteractionDeactivated,APawn*,InteractorPawn);
 
 
 UCLASS(BlueprintType,Blueprintable,ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
@@ -46,10 +46,19 @@ class MYINTERACTIONTEST_API UMyManager_InteractionTarget : public UActorComponen
 
 public:
 
+	UPROPERTY(BlueprintAssignable,BlueprintCallable,Category="Interacion Target|Delegate")
 	FOnInteractionBegin OnInteractionBegin;
+	
+	UPROPERTY(BlueprintAssignable,BlueprintCallable,Category="Interacion Target|Delegate")
 	FOnInteractionEnd OnInteractionEnd;
+	
+	UPROPERTY(BlueprintAssignable,BlueprintCallable,Category="Interacion Target|Delegate")
 	FOnInteractionUpdated OnInteractionUpdated;
+	
+	UPROPERTY(BlueprintAssignable,BlueprintCallable,Category="Interacion Target|Delegate")
 	FOnInteractionReactivated OnInteractionReactivated;
+	
+	UPROPERTY(BlueprintAssignable,BlueprintCallable,Category="Interacion Target|Delegate")
 	FOnInteractionDeactivated OnInteractionDeactivated;
 	
 	// Sets default values for this component's properties
@@ -126,7 +135,9 @@ public:
 public:
 	UFUNCTION()
 	void AssignInteractor(bool Add,AController* Interactor);
-	
+
+	UFUNCTION()
+	void EnableInteraction(bool Enable);
 	// Variables
 	// Main
 public:
@@ -143,7 +154,7 @@ public:
 	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
 	double ScreenRadiusPercent;
 
-	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category="InteractionTarget|Config|Widget")
 	FMargin WidgetMargin;
 	
 	UPROPERTY(VisibleAnywhere,BlueprintReadWrite)
