@@ -5,6 +5,7 @@
 
 #include "MyManager_Interactor.h"
 #include "Components/SphereComponent.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 
 // Sets default values for this component's properties
@@ -244,8 +245,7 @@ void UMyManager_InteractionTarget::OnOuterZoneEndOverlap(UPrimitiveComponent* Ov
 				GetComponentByClass(UMyManager_Interactor::StaticClass()));
 
 			if(InteractorManager)
-			{
-				InteractorManager->ServerUpdatePointOfInterests(false,this);
+			{	InteractorManager->ServerUpdatePointOfInterests(false,this);
 
 				InteractorManager->ServerRequestAssignInteractor(false,this);
 			}
@@ -356,7 +356,7 @@ void UMyManager_InteractionTarget::OnAddedToPendingTarget()
 	if(GetWorld())
 	{
 		UMyManager_Interactor* LocCurrentInteractor=nullptr;
-		LastInteractedTime = GetWorld()->GetTimeSeconds();
+		LastInteractedTime =UKismetSystemLibrary::GetGameTimeInSeconds(this);
 
 		for (AController* Interactor : AssignedInteractors)
 		{

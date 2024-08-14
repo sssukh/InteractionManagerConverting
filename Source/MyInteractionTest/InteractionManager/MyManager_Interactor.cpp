@@ -215,8 +215,7 @@ void UMyManager_Interactor::OnPointOfInterestUpdatedServerSide(bool Add,
 			PointOfInterests.AddUnique(InteractionTarget);
 
 			InteractionTarget->OwnerReference->OnDestroyed.AddDynamic(this,
-			                                                          &UMyManager_Interactor::
-			                                                          OnInteractionTargetDestroyed);
+			                                                          &UMyManager_Interactor::OnInteractionTargetDestroyed);
 
 			ClientUpdatePointOfInterests(true, InteractionTarget);
 		}
@@ -257,7 +256,7 @@ void UMyManager_Interactor::OnPointOfInterestUpdatedClientSide(bool Add,
 			if (OwnerController->IsLocalController())
 			{
 				InteractionWidget = Cast<UUW_InteractionTarget>(
-					CreateWidget(OwnerController, UUW_InteractionTarget::StaticClass()));
+					CreateWidget(OwnerController, InteractionTargetWidgetBP));
 
 				WidgetPool.AddUnique(InteractionWidget);
 
@@ -782,8 +781,8 @@ void UMyManager_Interactor::CheckForPendingTargets()
 		for (UMyManager_InteractionTarget* Target : PendingTargets)
 		{
 			LocCurrentPendingTarget = Target;
-
-			if (abs(GEngine->GetWorld()->GetTimeSeconds() - LocCurrentPendingTarget->LastInteractedTime)
+			
+			if (abs(UKismetSystemLibrary::GetGameTimeInSeconds(this) - LocCurrentPendingTarget->LastInteractedTime)
 				>= LocCurrentPendingTarget->ReactivationDuration)
 			{
 				OnInteractionTargetReactivated(LocCurrentPendingTarget);
