@@ -47,31 +47,31 @@ void UMyManager_InteractionTarget::BeginPlay()
 UMyManager_Interactor* UMyManager_InteractionTarget::GetInteractorManager(AController* Controller)
 {
 	UMyManager_Interactor* InteractorManager = Cast<UMyManager_Interactor>(Controller->
-				GetComponentByClass(UMyManager_Interactor::StaticClass()));
+		GetComponentByClass(UMyManager_Interactor::StaticClass()));
 
 	return InteractorManager;
 }
 
 void UMyManager_InteractionTarget::ConstructOwnerEssentials()
 {
-	if(GetOwner())
+	if (GetOwner())
 	{
 		OwnerReference = GetOwner();
 	}
 }
+
 // InnerZone과 OuterZone 생성 및 Target에 부착
 void UMyManager_InteractionTarget::ConstructOverlapZones()
 {
-	
 	USceneComponent* LocComponentToAttach = nullptr;
-	
+
 	TArray<USceneComponent*> SceneArray;
-	GetOwner()->GetComponents(USceneComponent::StaticClass(),SceneArray);
+	GetOwner()->GetComponents(USceneComponent::StaticClass(), SceneArray);
 
 	// InnerZone과 OuterZone을 부착할 Component를 이름으로 찾기
 	for (USceneComponent* Scene : SceneArray)
 	{
-		if(Scene->GetName()==InteractionZone_ComponentToAttach)
+		if (Scene->GetName() == InteractionZone_ComponentToAttach)
 		{
 			LocComponentToAttach = Scene;
 			break;
@@ -83,18 +83,19 @@ void UMyManager_InteractionTarget::ConstructOverlapZones()
 	// 	AddComponentByClass(USphereComponent::StaticClass(),false,FTransform::Identity,false));
 
 	// AddComponentByClass에서 NewObject로 변경함
-	if(InnerZone = NewObject<USphereComponent>(this->GetOwner()
-		,USphereComponent::StaticClass(),TEXT("InnerZone")))
+	if (InnerZone = NewObject<USphereComponent>(this->GetOwner()
+	                                            , USphereComponent::StaticClass(),TEXT("InnerZone")))
 	{
 		InnerZone->RegisterComponent();
-		
+
 		InnerZone->SetHiddenInGame(!EnableDebug);
 
-		if(LocComponentToAttach&&InnerZone)
+		if (LocComponentToAttach && InnerZone)
 		{
-			FAttachmentTransformRules AttachTransformRules(EAttachmentRule::SnapToTarget,EAttachmentRule::KeepWorld,EAttachmentRule::KeepWorld,false);
-		
-			InnerZone->AttachToComponent(LocComponentToAttach,AttachTransformRules);
+			FAttachmentTransformRules AttachTransformRules(EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld,
+			                                               EAttachmentRule::KeepWorld, false);
+
+			InnerZone->AttachToComponent(LocComponentToAttach, AttachTransformRules);
 		}
 	}
 	// OuterZone 생성해서 InnerZone에 부착
@@ -102,152 +103,152 @@ void UMyManager_InteractionTarget::ConstructOverlapZones()
 	// 	AddComponentByClass(USphereComponent::StaticClass(),false,FTransform::Identity,false));
 
 	// NewObject로 변경함
-	if(OuterZone = NewObject<USphereComponent>(this->GetOwner()
-		,USphereComponent::StaticClass(),TEXT("OuterZone")))
+	if (OuterZone = NewObject<USphereComponent>(this->GetOwner()
+	                                            , USphereComponent::StaticClass(),TEXT("OuterZone")))
 	{
 		OuterZone->RegisterComponent();
-		
+
 		OuterZone->SetHiddenInGame(!EnableDebug);
 
-		if(InnerZone&&OuterZone)
+		if (InnerZone && OuterZone)
 		{
-			FAttachmentTransformRules AttachTransformRules(EAttachmentRule::SnapToTarget,EAttachmentRule::KeepWorld,EAttachmentRule::KeepWorld,false);
-		
-			OuterZone->AttachToComponent(InnerZone,AttachTransformRules);
+			FAttachmentTransformRules AttachTransformRules(EAttachmentRule::SnapToTarget, EAttachmentRule::KeepWorld,
+			                                               EAttachmentRule::KeepWorld, false);
+
+			OuterZone->AttachToComponent(InnerZone, AttachTransformRules);
 		}
 
-		InnerZone->OnComponentBeginOverlap.AddDynamic(this,&UMyManager_InteractionTarget::OnInnerZoneBeginOverlap);
-		InnerZone->OnComponentEndOverlap.AddDynamic(this,&UMyManager_InteractionTarget::OnInnerZoneEndOverlap);
+		InnerZone->OnComponentBeginOverlap.AddDynamic(this, &UMyManager_InteractionTarget::OnInnerZoneBeginOverlap);
+		InnerZone->OnComponentEndOverlap.AddDynamic(this, &UMyManager_InteractionTarget::OnInnerZoneEndOverlap);
 
-		OuterZone->OnComponentBeginOverlap.AddDynamic(this,&UMyManager_InteractionTarget::OnOuterZoneBeginOverlap);
-		OuterZone->OnComponentEndOverlap.AddDynamic(this,&UMyManager_InteractionTarget::OnOuterZoneEndOverlap);
+		OuterZone->OnComponentBeginOverlap.AddDynamic(this, &UMyManager_InteractionTarget::OnOuterZoneBeginOverlap);
+		OuterZone->OnComponentEndOverlap.AddDynamic(this, &UMyManager_InteractionTarget::OnOuterZoneEndOverlap);
 
-		InnerZone->SetSphereRadius(InnerZoneRadius,true);
-		
-		OuterZone->SetSphereRadius(FMath::Max(OuterZoneExtent,10) + InnerZoneRadius,true);
-	
+		InnerZone->SetSphereRadius(InnerZoneRadius, true);
+
+		OuterZone->SetSphereRadius(FMath::Max(OuterZoneExtent, 10) + InnerZoneRadius, true);
 	}
 }
 
 // ComponentsToHighlight에 담긴 이름과 일치하는 Component가 있으면 HighlightedComponents에 추가
 void UMyManager_InteractionTarget::ConstructHighlightedComponents()
 {
-	if(GetOwner())
+	if (GetOwner())
 	{
 		USceneComponent* LocOwnerRoot = GetOwner()->GetRootComponent();
 
-		if(UPrimitiveComponent* LocOwnerPrimitive = Cast<UPrimitiveComponent>(LocOwnerRoot))
+		if (UPrimitiveComponent* LocOwnerPrimitive = Cast<UPrimitiveComponent>(LocOwnerRoot))
 		{
-			if(ComponentsToHighlight.Contains(LocOwnerPrimitive->GetName()))
+			if (ComponentsToHighlight.Contains(LocOwnerPrimitive->GetName()))
 			{
 				HighlightedComponents.AddUnique(LocOwnerPrimitive);
 			}
 		}
 		TArray<USceneComponent*> ChildComponents;
-		LocOwnerRoot->GetChildrenComponents(true,ChildComponents);
+		LocOwnerRoot->GetChildrenComponents(true, ChildComponents);
 		for (USceneComponent* Child : ChildComponents)
 		{
-			if(UPrimitiveComponent* LocChildPrimitive = Cast<UPrimitiveComponent>(Child))
+			if (UPrimitiveComponent* LocChildPrimitive = Cast<UPrimitiveComponent>(Child))
 			{
-				if(ComponentsToHighlight.Contains(LocChildPrimitive->GetName()))
+				if (ComponentsToHighlight.Contains(LocChildPrimitive->GetName()))
 				{
 					HighlightedComponents.AddUnique(LocChildPrimitive);
 				}
 			}
 		}
-		
 	}
-
-	
 }
 
 // Find Interactor Component from Overlapped Actor and ServerUpdateInteractionTarget
 // Update Widget in Client, Add InteractionTargets in server
 void UMyManager_InteractionTarget::OnInnerZoneBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-                                                           UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+                                                           UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
+                                                           bool bFromSweep, const FHitResult& SweepResult)
 {
-	if(APawn* PlayerPawn = Cast<APawn>(OtherActor))
+	if (APawn* PlayerPawn = Cast<APawn>(OtherActor))
 	{
 		AController* Controller = PlayerPawn->GetController();
-		GEngine->AddOnScreenDebugMessage(-1,1.0f,FColor::Red,
-			FString::Printf(TEXT("Player Enters InnerZone")));
-		
-		if(Controller&&Controller->IsLocalPlayerController())
+		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red,
+		                                 FString::Printf(TEXT("Player Enters InnerZone")));
+
+		if (Controller && Controller->IsLocalPlayerController())
 		{
 			UMyManager_Interactor* InteractorManager = Cast<UMyManager_Interactor>(Controller->
 				GetComponentByClass(UMyManager_Interactor::StaticClass()));
 
-			if(InteractorManager)
+			if (InteractorManager)
 			{
-				InteractorManager->ServerUpdateInteractionTargets(true,this);
+				InteractorManager->ServerUpdateInteractionTargets(true, this);
 			}
 		}
 	}
 }
 
 void UMyManager_InteractionTarget::OnInnerZoneEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+                                                         UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	if(APawn* PlayerPawn = Cast<APawn>(OtherActor))
+	if (APawn* PlayerPawn = Cast<APawn>(OtherActor))
 	{
 		AController* Controller = PlayerPawn->GetController();
-		GEngine->AddOnScreenDebugMessage(-1,1.0f,FColor::Red,
-				FString::Printf(TEXT("Player Leaves InnerZone")));
-		if(Controller&&Controller->IsLocalPlayerController())
+		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red,
+		                                 FString::Printf(TEXT("Player Leaves InnerZone")));
+		if (Controller && Controller->IsLocalPlayerController())
 		{
 			UMyManager_Interactor* InteractorManager = Cast<UMyManager_Interactor>(Controller->
 				GetComponentByClass(UMyManager_Interactor::StaticClass()));
 
-			if(InteractorManager)
+			if (InteractorManager)
 			{
-				InteractorManager->ServerUpdateInteractionTargets(false,this);
+				InteractorManager->ServerUpdateInteractionTargets(false, this);
 			}
 		}
 	}
 }
 
 void UMyManager_InteractionTarget::OnOuterZoneBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+                                                           UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
+                                                           bool bFromSweep, const FHitResult& SweepResult)
 {
-	if(APawn* PlayerPawn = Cast<APawn>(OtherActor))
+	if (APawn* PlayerPawn = Cast<APawn>(OtherActor))
 	{
 		AController* Controller = PlayerPawn->GetController();
-		GEngine->AddOnScreenDebugMessage(-1,1.0f,FColor::Red,
-			FString::Printf(TEXT("Player Enters OuterZone")));
-	
-		if(Controller&&Controller->IsLocalPlayerController())
+		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red,
+		                                 FString::Printf(TEXT("Player Enters OuterZone")));
+
+		if (Controller && Controller->IsLocalPlayerController())
 		{
 			UMyManager_Interactor* InteractorManager = Cast<UMyManager_Interactor>(Controller->
 				GetComponentByClass(UMyManager_Interactor::StaticClass()));
 
-			if(InteractorManager)
+			if (InteractorManager)
 			{
-				InteractorManager->ServerUpdatePointOfInterests(true,this);
+				InteractorManager->ServerUpdatePointOfInterests(true, this);
 
-				InteractorManager->ServerRequestAssignInteractor(true,this);
+				InteractorManager->ServerRequestAssignInteractor(true, this);
 			}
 		}
 	}
 }
 
 void UMyManager_InteractionTarget::OnOuterZoneEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+                                                         UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	if(APawn* PlayerPawn = Cast<APawn>(OtherActor))
+	if (APawn* PlayerPawn = Cast<APawn>(OtherActor))
 	{
 		AController* Controller = PlayerPawn->GetController();
-		GEngine->AddOnScreenDebugMessage(-1,1.0f,FColor::Red,
-			FString::Printf(TEXT("Player Leaves OuterZone")));
+		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red,
+		                                 FString::Printf(TEXT("Player Leaves OuterZone")));
 
-		if(Controller&&Controller->IsLocalPlayerController())
+		if (Controller && Controller->IsLocalPlayerController())
 		{
 			UMyManager_Interactor* InteractorManager = Cast<UMyManager_Interactor>(Controller->
 				GetComponentByClass(UMyManager_Interactor::StaticClass()));
 
-			if(InteractorManager)
-			{	InteractorManager->ServerUpdatePointOfInterests(false,this);
+			if (InteractorManager)
+			{
+				InteractorManager->ServerUpdatePointOfInterests(false, this);
 
-				InteractorManager->ServerRequestAssignInteractor(false,this);
+				InteractorManager->ServerRequestAssignInteractor(false, this);
 			}
 		}
 	}
@@ -262,25 +263,25 @@ void UMyManager_InteractionTarget::UpdateWidgetInfo(FMargin InWidgetMargin, doub
 
 void UMyManager_InteractionTarget::SelectMarkerComponent(FString ComponentName)
 {
-	if(GetOwner())
+	if (GetOwner())
 	{
 		USceneComponent* LocOwnerRoot = GetOwner()->GetRootComponent();
 
 		TArray<USceneComponent*> LocComponents;
-		LocOwnerRoot->GetChildrenComponents(true,LocComponents);
+		LocOwnerRoot->GetChildrenComponents(true, LocComponents);
 
 		LocComponents.Add(LocOwnerRoot);
 
 		for (USceneComponent* ChildComponent : LocComponents)
 		{
-			if(MarkerComponentName==ChildComponent->GetName())
+			if (MarkerComponentName == ChildComponent->GetName())
 			{
 				MarkerTargetComponent = ChildComponent;
 				break;
 			}
 		}
 
-		if(!MarkerTargetComponent)
+		if (!MarkerTargetComponent)
 		{
 			MarkerTargetComponent = LocOwnerRoot;
 		}
@@ -297,9 +298,9 @@ void UMyManager_InteractionTarget::SetHighlight(bool IsHighlighted)
 
 bool UMyManager_InteractionTarget::IsReactivationEnabled()
 {
-	switch(FinishMethod)
+	switch (FinishMethod)
 	{
-	case Enum_InteractionFinishMethod::ReactivateAfterDurationOnCompleted :
+	case Enum_InteractionFinishMethod::ReactivateAfterDurationOnCompleted:
 	case Enum_InteractionFinishMethod::ReactivateAfterDurationOnCanceled:
 	case Enum_InteractionFinishMethod::ReactivateAfterDurationOnCompletedOrCanceled:
 	case Enum_InteractionFinishMethod::ReactivateAfterDurationOnCanceledDestroyOnCompleted:
@@ -309,14 +310,14 @@ bool UMyManager_InteractionTarget::IsReactivationEnabled()
 	case Enum_InteractionFinishMethod::DeactivateOnCanceledReactivateAfterDurationOnCompleted:
 	case Enum_InteractionFinishMethod::DeactivateOnCompletedReactivateAfterDurationOnCanceled:
 		return true;
-	default :
+	default:
 		return false;
 	}
 }
 
 bool UMyManager_InteractionTarget::CancelOnRelease()
 {
-	switch(FinishMethod)
+	switch (FinishMethod)
 	{
 	case Enum_InteractionFinishMethod::DestroyOnCanceled:
 	case Enum_InteractionFinishMethod::DestroyOnCompletedOrCanceled:
@@ -340,6 +341,10 @@ bool UMyManager_InteractionTarget::CancelOnRelease()
 	}
 }
 
+// 여기서 위젯을 지워야할까?
+// Deactivated Targets에 들어가있다.
+// ClearWidgetInteractionTarget?
+// DeactivatedTargets를 관리하는 방식이 필요할것같다.
 void UMyManager_InteractionTarget::OnDeactivated()
 {
 	InnerZone->SetGenerateOverlapEvents(false);
@@ -353,60 +358,57 @@ void UMyManager_InteractionTarget::OnDeactivated()
 
 void UMyManager_InteractionTarget::OnAddedToPendingTarget()
 {
-	if(GetWorld())
+	UMyManager_Interactor* LocCurrentInteractor = nullptr;
+	LastInteractedTime = UKismetSystemLibrary::GetGameTimeInSeconds(this);
+
+	for (AController* Interactor : AssignedInteractors)
 	{
-		UMyManager_Interactor* LocCurrentInteractor=nullptr;
-		LastInteractedTime =UKismetSystemLibrary::GetGameTimeInSeconds(this);
+		LocCurrentInteractor = GetInteractorManager(Interactor);
 
-		for (AController* Interactor : AssignedInteractors)
-		{
-			LocCurrentInteractor = GetInteractorManager(Interactor);
-
-			LocCurrentInteractor->AddToPendingTargets(this);
-		}
-
-		InteractionEnabled=false;
+		LocCurrentInteractor->AddToPendingTargets(this);
 	}
+
+	InteractionEnabled = false;
 }
 
 void UMyManager_InteractionTarget::OnInteractionBeginEvent(APawn* InteractorPawn)
 {
-	if( GetOwner()&&GetOwner()->HasAuthority())
+	if (GetOwner() && GetOwner()->HasAuthority())
 	{
-		if(NetworkHandleMethod== Enum_InteractionNetworkHandleMethod::DisableWhileInteracting)
+		if (NetworkHandleMethod == Enum_InteractionNetworkHandleMethod::DisableWhileInteracting)
 		{
 			for (AController* Interactor : AssignedInteractors)
 			{
-				if(Interactor->GetPawn()!=InteractorPawn)
+				if (Interactor->GetPawn() != InteractorPawn)
 				{
-					if(UMyManager_Interactor* TempInteractor = Cast<UMyManager_Interactor>(Interactor->GetComponentByClass(UMyManager_Interactor::StaticClass())))
+					if (UMyManager_Interactor* TempInteractor = Cast<UMyManager_Interactor>(
+						Interactor->GetComponentByClass(UMyManager_Interactor::StaticClass())))
 					{
-						TempInteractor->AddToDeactivatedTargets(this);	
+						TempInteractor->AddToDeactivatedTargets(this);
 					}
 				}
 			}
 		}
 	}
-	
 }
 
 void UMyManager_InteractionTarget::OnInteractionEndEvent(Enum_InteractionResult Result, APawn* InteractorPawn)
 {
-	if(GetOwner()&&GetOwner()->HasAuthority())
+	if (GetOwner() && GetOwner()->HasAuthority())
 	{
-		if(NetworkHandleMethod==Enum_InteractionNetworkHandleMethod::DisableWhileInteracting)
+		if (NetworkHandleMethod == Enum_InteractionNetworkHandleMethod::DisableWhileInteracting)
 		{
 			for (AController* Interactor : AssignedInteractors)
 			{
-				if(Interactor->GetPawn()!=InteractorPawn)
+				if (Interactor->GetPawn() != InteractorPawn)
 				{
-					if(UMyManager_Interactor* LocCurrentInteractor = Cast<UMyManager_Interactor>(Interactor->GetComponentByClass(UMyManager_Interactor::StaticClass())))
+					if (UMyManager_Interactor* LocCurrentInteractor = Cast<UMyManager_Interactor>(
+						Interactor->GetComponentByClass(UMyManager_Interactor::StaticClass())))
 					{
-						if(LocCurrentInteractor->DeactivatedTargets.Contains(this))
+						if (LocCurrentInteractor->DeactivatedTargets.Contains(this))
 						{
 							LocCurrentInteractor->RemoveFromDeactivatedTargets(this);
-
-							LocCurrentInteractor->ApplyFinishMethod(this,Result);
+							LocCurrentInteractor->ApplyFinishMethod(this, Result);
 						}
 					}
 				}
@@ -417,7 +419,7 @@ void UMyManager_InteractionTarget::OnInteractionEndEvent(Enum_InteractionResult 
 
 void UMyManager_InteractionTarget::AssignInteractor(bool Add, AController* Interactor)
 {
-	if(Add)
+	if (Add)
 	{
 		AssignedInteractors.AddUnique(Interactor);
 	}
@@ -431,7 +433,7 @@ void UMyManager_InteractionTarget::EnableInteraction(bool Enable)
 {
 	InteractionEnabled = Enable;
 
-	if(Enable)
+	if (Enable)
 	{
 		for (AController* Interactor : AssignedInteractors)
 		{
@@ -452,7 +454,3 @@ void UMyManager_InteractionTarget::EnableInteraction(bool Enable)
 		}
 	}
 }
-
-
-
-

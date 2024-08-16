@@ -235,7 +235,7 @@ public:
 	int32 DefaultWidgetPoolSize;
 
 	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "Interactor Manager|Main")
-	double PendingTargetCheckInteraval;
+	double PendingTargetCheckInteraval=0.35;
 
 
 	
@@ -245,7 +245,7 @@ public:
 	FMargin WidgetScreenMargin;
 
 	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category = "Interactor Manager|Marker Setting")
-	double ScreenRadiusPercent;
+	double ScreenRadiusPercent=0.5f;
 
 public:
 	UPROPERTY(EditAnywhere,BlueprintReadOnly,Category="Manager Interactor|Config|Essential")

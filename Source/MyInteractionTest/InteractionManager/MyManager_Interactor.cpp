@@ -350,7 +350,7 @@ void UMyManager_Interactor::ConstructPooledMarkerWidgets()
 	// }
 	if (!InteractionTargetWidgetBP)
 	{
-		//GEngine->AddOnScreenDebugMessage(TEXT("InteractionWidgetClass를 설정하지 않았습니다 꼭 설정해주세요"));
+		GEngine->AddOnScreenDebugMessage(-1,0.0f,FColor::Red,TEXT("InteractionWidgetClass를 설정하지 않았습니다 꼭 설정해주세요"));
 	}
 
 
@@ -434,6 +434,9 @@ void UMyManager_Interactor::Debug_Function()
 			                                 FString::Printf(TEXT("Point Of Interests : %d"), PointOfInterests.Num()));
 			GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue,
 			                                 FString::Printf(TEXT("Pending Targets : %d"), PendingTargets.Num()));
+			GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue,
+											 FString::Printf(TEXT("Deactivated Targets : %d"), DeactivatedTargets.Num()));
+			
 			if (CurrentInteractionMarker)
 				GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue,
 				                                 FString::Printf(
@@ -720,7 +723,7 @@ void UMyManager_Interactor::AddToPendingTargets(UMyManager_InteractionTarget* In
 
 	ServerUpdateInteractionTargets(false, InteractionTarget);
 
-	if (PendingTargetTimerHandle.IsValid())
+	if (!PendingTargetTimerHandle.IsValid())
 	{
 		GetWorld()->GetTimerManager().SetTimer(PendingTargetTimerHandle,
 		                                       FTimerDelegate::CreateLambda(
@@ -764,13 +767,15 @@ void UMyManager_Interactor::OnInteractionTargetReactivated(UMyManager_Interactio
 
 void UMyManager_Interactor::AddToDeactivatedTargets(UMyManager_InteractionTarget* InteractionTarget)
 {
-	DeactivatedTargets.AddUnique(InteractionTarget);
+	// DeactivatedTargets.AddUnique(InteractionTarget);
 
 	ServerUpdatePointOfInterests(false, InteractionTarget);
 
 	ServerUpdateInteractionTargets(false, InteractionTarget);
 
 	InteractionTarget->OnDeactivated();
+
+	
 }
 
 void UMyManager_Interactor::CheckForPendingTargets()
@@ -788,6 +793,10 @@ void UMyManager_Interactor::CheckForPendingTargets()
 				OnInteractionTargetReactivated(LocCurrentPendingTarget);
 			}
 		}
+	}
+	else
+	{
+		UKismetSystemLibrary::K2_ClearAndInvalidateTimerHandle(this,PendingTargetTimerHandle);
 	}
 }
 
@@ -974,7 +983,7 @@ void UMyManager_Interactor::TryTakeInteraction()
 		{
 			// 누적된 홀드 시간이 0이라면 처리할 것이 없음
 			if (CurrentHoldTime == 0.0f)
-				return;
+				break;
 
 			// 상호작용이 쿨다운이 활성화된 상태에서 중단되었을 때
 			if (BestInteractionTarget->CooldownEnabled)
