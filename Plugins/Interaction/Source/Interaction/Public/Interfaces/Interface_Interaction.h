@@ -21,8 +21,8 @@ class INTERACTION_API IInterface_Interaction
 	GENERATED_BODY()
 
 public:
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Interaction System|Interface")
-	void SendEvent(FStateTreeEvent NewEvent);
+	// UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Interaction System|Interface")
+	// void SendEvent(FStateTreeEvent NewEvent);
 		
 	// UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Interaction System|Interface")
 	// void OnInteractionBegin(APawn* NewInteractorPawn);

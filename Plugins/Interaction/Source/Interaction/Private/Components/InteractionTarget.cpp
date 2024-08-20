@@ -54,6 +54,9 @@ void UInteractionTarget::BeginPlay()
 	ConstructOverlapZones();
 	ConstructHighlightedComponents();
 	SelectMarkerComponent();
+
+	OnInteractionBegin.AddDynamic(this,&UInteractionTarget::OnInteractionBeginEvent);
+	OnInteractionEnd.AddDynamic(this,&UInteractionTarget::OnInteractionEndEvent);
 }
 
 void UInteractionTarget::ConstructOwnerEssentials()

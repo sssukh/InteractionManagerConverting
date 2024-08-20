@@ -69,13 +69,9 @@ void UReactivateOnFinish::CheckForPendingTargets()
 				InteractionManager->ServerUpdatePointOfInterests(true, InteractionTarget);
 			}
 		}
-
-		if (InteractableActor->GetClass()->ImplementsInterface(UInterface_Interaction::StaticClass()))
-		{
-			FStateTreeEvent SendEvent;
-			SendEvent.Tag = InteractionGameTags::Interaction_Reactivate;
-			IInterface_Interaction::Execute_SendEvent(InteractableActor, SendEvent);
-		}
+		
+		if (InteractionTarget->OnInteractionUpdated.IsBound())
+			InteractionTarget->OnInteractionReactivated.Broadcast(InteractionPawn);
 
 		UKismetSystemLibrary::K2_ClearAndInvalidateTimerHandle(this, PendingTarget_TimerHandle);
 	}

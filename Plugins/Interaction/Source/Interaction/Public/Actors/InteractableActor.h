@@ -47,7 +47,7 @@ protected:
 	/*========================================================================================
 	*	Interface_Action
 	=========================================================================================*/
-	virtual void SendEvent_Implementation(FStateTreeEvent NewEvent) override;
+	// virtual void SendEvent_Implementation(FStateTreeEvent NewEvent) override;
 	
 	
 	
@@ -75,5 +75,6 @@ private:
 	float CurrentHoldTime;
 	
 	float RepeatCooldown;
+	
 	int32 Repeated;
 };

@@ -7,10 +7,11 @@
 
 class UInteractionManager;
 class UInteractionTarget;
+
 /**
  * 
  */
-UCLASS(Abstract, Blueprintable, BlueprintType, EditInlineNew)
+UCLASS(Blueprintable, BlueprintType, EditInlineNew)
 class INTERACTION_API UInteractionFinish : public UObject
 {
 	GENERATED_BODY()

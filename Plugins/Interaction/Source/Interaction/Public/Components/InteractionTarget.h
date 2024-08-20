@@ -1,5 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
+﻿
 #pragma once
 
 #include "CoreMinimal.h"
@@ -12,6 +11,13 @@ class UInteractionManager;
 class USphereComponent;
 
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInteractionBegin, APawn*, InInteractorPawn);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnInteractionEnd, EInteractionResult, InInteractionResult, APawn*, InInteractorPawn);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnInteractionUpdated, float, InAlpha, int32, InRepeated, APawn*, InInteractorPawn);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInteractionReactivated, APawn*, ForPawn);
+
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInteractionDeactivated);
 UCLASS(Blueprintable, BlueprintType, ClassGroup=("Interaction Plugin"), meta=(BlueprintSpawnableComponent))
 class INTERACTION_API UInteractionTarget : public UActorComponent
 {
@@ -374,35 +380,38 @@ public:
 	/*마지막 상호작용 시간*/
 	UPROPERTY(BlueprintReadWrite, Category="Interaction Target")
 	float LastInteractedTime = 2.0f;
-
+	
 	/*디버그 모드 활성화 여부*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Interaction Target|Debug")
 	bool bEnableDebug = true;
+
+
+	/*========================================================================================
+	*	Delegate
+	=========================================================================================*/
+
+	// 상호작용 시작 델리게이트
+	UPROPERTY(BlueprintAssignable, BlueprintCallable, Category="Manager Interaction Target|Delegate")
+	FOnInteractionBegin OnInteractionBegin;
+
+	// 상호작용 종료 델리게이트
+	UPROPERTY(BlueprintAssignable, BlueprintCallable, Category="Manager Interaction Target|Delegate")
+	FOnInteractionEnd OnInteractionEnd;
+
+	// 상호작용 업데이트 델리게이트
+	UPROPERTY(BlueprintAssignable, BlueprintCallable, Category="Manager Interaction Target|Delegate")
+	FOnInteractionUpdated OnInteractionUpdated;
+
+	// 상호작용 재활성화 델리게이트
+	UPROPERTY(BlueprintAssignable, BlueprintCallable, Category="Manager Interaction Target|Delegate")
+	FOnInteractionReactivated OnInteractionReactivated;
+
+	// 상호작용 비활성화 델리게이트
+	UPROPERTY(BlueprintAssignable, BlueprintCallable, Category="Manager Interaction Target|Delegate")
+	FOnInteractionDeactivated OnInteractionDeactivated;
 };
 
 
-// DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInteractionBegin, APawn*, InInteractorPawn);
-// DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnInteractionEnd, EInteractionResult, InInteractionResult, APawn*, InInteractorPawn);
-// DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnInteractionUpdated, float, InAlpha, int32, InRepeated, APawn*, InInteractorPawn);
-// DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInteractionReactivated, APawn*, ForPawn);
-// DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInteractionDeactivated);
-//
-// // 상호작용 시작 델리게이트
-// UPROPERTY(BlueprintAssignable, BlueprintCallable, Category="Manager Interaction Target|Delegate")
-// FOnInteractionBegin OnInteractionBegin;
-//
-// // 상호작용 종료 델리게이트
-// UPROPERTY(BlueprintAssignable, BlueprintCallable, Category="Manager Interaction Target|Delegate")
-// FOnInteractionEnd OnInteractionEnd;
-//
-// // 상호작용 업데이트 델리게이트
-// UPROPERTY(BlueprintAssignable, BlueprintCallable, Category="Manager Interaction Target|Delegate")
-// FOnInteractionUpdated OnInteractionUpdated;
-//
-// // 상호작용 재활성화 델리게이트
-// UPROPERTY(BlueprintAssignable, BlueprintCallable, Category="Manager Interaction Target|Delegate")
-// FOnInteractionReactivated OnInteractionReactivated;
-//
-// // 상호작용 비활성화 델리게이트
-// UPROPERTY(BlueprintAssignable, BlueprintCallable, Category="Manager Interaction Target|Delegate")
-// FOnInteractionDeactivated OnInteractionDeactivated;
+
+
+

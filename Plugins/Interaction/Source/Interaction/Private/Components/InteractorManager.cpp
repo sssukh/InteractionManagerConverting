@@ -243,13 +243,8 @@ void UInteractionManager::UpdateBestInteractable(UInteractionTarget* NewTarget)
 			{
 				bIsInteracting = false;
 
-
-				if (NewTarget->GetOwner()->GetClass()->ImplementsInterface(UInterface_Interaction::StaticClass()))
-				{
-					FStateTreeEvent SendEvent;
-					SendEvent.Tag = InteractionGameTags::Interaction_End;
-					IInterface_Interaction::Execute_SendEvent(NewTarget->GetOwner(), SendEvent);
-				}
+				if (BestInteractionTarget->OnInteractionEnd.IsBound())
+					BestInteractionTarget->OnInteractionEnd.Broadcast(EInteractionResult::Canceled, OwnerController->GetPawn());
 
 
 				ClientResetData();
@@ -270,12 +265,9 @@ void UInteractionManager::UpdateBestInteractable(UInteractionTarget* NewTarget)
 			{
 				bIsInteracting = false;
 
-				if (NewTarget->GetOwner()->GetClass()->ImplementsInterface(UInterface_Interaction::StaticClass()))
-				{
-					FStateTreeEvent SendEvent;
-					SendEvent.Tag = InteractionGameTags::Interaction_End;
-					IInterface_Interaction::Execute_SendEvent(NewTarget->GetOwner(), SendEvent);
-				}
+
+				if (BestInteractionTarget->OnInteractionEnd.IsBound())
+					BestInteractionTarget->OnInteractionEnd.Broadcast(EInteractionResult::Canceled, OwnerController->GetPawn());
 
 				ClientResetData();
 			}
@@ -291,13 +283,10 @@ void UInteractionManager::ApplyFinishMethod(UInteractionTarget* InteractionTarge
 	bIsInteracting = false;
 
 	ClientResetData();
-	
-	if (InteractionTarget->GetOwner()->GetClass()->ImplementsInterface(UInterface_Interaction::StaticClass()))
-	{
-		FStateTreeEvent SendEvent;
-		SendEvent.Tag = InteractionGameTags::Interaction_End;
-		IInterface_Interaction::Execute_SendEvent(InteractionTarget->GetOwner(), SendEvent);
-	}
+
+
+	if (BestInteractionTarget->OnInteractionEnd.IsBound())
+		BestInteractionTarget->OnInteractionEnd.Broadcast(EInteractionResult::Completed, OwnerController->GetPawn());
 
 
 	if (IsValid(InteractionTarget->InteractionFinishInstance))
@@ -422,13 +411,8 @@ void UInteractionManager::OnInteractionTargetDestroyed(AActor* DestroyedActor)
 
 void UInteractionManager::ServerOnInteractionUpdated_Implementation(UInteractionTarget* InteractionTarget, float InAlpha, int32 InRepeated, APawn* InteractorPawn)
 {
-	if (InteractionTarget->GetOwner()->GetClass()->ImplementsInterface(UInterface_Interaction::StaticClass()))
-	{
-		FStateTreeEvent SendEvent;
-		SendEvent.Tag = InteractionGameTags::Interaction_Update;
-		// SendEvent.Payload = FInteractionPayLoad(InAlpha,InRepeated,InteractorPawn);
-		IInterface_Interaction::Execute_SendEvent(InteractionTarget->GetOwner(), SendEvent);
-	}
+	if (BestInteractionTarget->OnInteractionUpdated.IsBound())
+		BestInteractionTarget->OnInteractionUpdated.Broadcast(InAlpha, InRepeated, InteractorPawn);
 }
 
 void UInteractionManager::ServerOnInteractionFinished_Implementation(UInteractionTarget* InteractionTarget, EInteractionResult InteractionResult)
@@ -438,12 +422,8 @@ void UInteractionManager::ServerOnInteractionFinished_Implementation(UInteractio
 
 void UInteractionManager::ServerOnInteractionBegin_Implementation(UInteractionTarget* InteractionTarget)
 {
-	if (InteractionTarget->GetOwner()->GetClass()->ImplementsInterface(UInterface_Interaction::StaticClass()))
-	{
-		FStateTreeEvent SendEvent;
-		SendEvent.Tag = InteractionGameTags::Interaction_Begin;
-		IInterface_Interaction::Execute_SendEvent(InteractionTarget->GetOwner(), SendEvent);
-	}
+	if (BestInteractionTarget->OnInteractionBegin.IsBound())
+		BestInteractionTarget->OnInteractionBegin.Broadcast(OwnerController->GetPawn());
 
 	bIsInteracting = true;
 }
@@ -611,12 +591,16 @@ void UInteractionManager::OnPointOfInterestUpdatedClientSide(bool bIsAdd, UInter
 
 void UInteractionManager::OnInteractionUpdated(UInteractionTarget* InteractionTarget, float InAlpha, int32 InRepeated)
 {
-	if (InteractionTarget->GetOwner()->GetClass()->ImplementsInterface(UInterface_Interaction::StaticClass()))
-	{
-		FStateTreeEvent SendEvent;
-		SendEvent.Tag = InteractionGameTags::Interaction_Update;
-		IInterface_Interaction::Execute_SendEvent(InteractionTarget->GetOwner(), SendEvent);
-	}
+	// if (InteractionTarget->GetOwner()->GetClass()->ImplementsInterface(UInterface_Interaction::StaticClass()))
+	// {
+	// 	FStateTreeEvent SendEvent;
+	// 	SendEvent.Tag = InteractionGameTags::Interaction_Update;
+	// 	SendEvent.Payload = FInstancedStruct::Make(FInteractionUpdatePayload(InAlpha,InRepeated,OwnerController->GetPawn()));
+	// 	IInterface_Interaction::Execute_SendEvent(InteractionTarget->GetOwner(), SendEvent);
+	// }
+
+	if (InteractionTarget->OnInteractionUpdated.IsBound())
+		InteractionTarget->OnInteractionUpdated.Broadcast(InAlpha, InRepeated, OwnerController->GetPawn());
 
 	// 현재 환경이 스탠드얼론(싱글플레이어) 모드가 아닌 경우, 서버와 상호작용 상태를 동기화합니다.
 	if (!UKismetSystemLibrary::IsStandalone(this))

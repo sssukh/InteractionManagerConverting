@@ -29,6 +29,8 @@ AInteractableActor::AInteractableActor()
 void AInteractableActor::BeginPlay()
 {
 	Super::BeginPlay();
+
+	
 }
 
 void AInteractableActor::Tick(float DeltaTime)
@@ -228,17 +230,26 @@ void AInteractableActor::HandleRepeatInteraction(UInteractionManager* Interactin
 	}
 }
 
-void AInteractableActor::SendEvent_Implementation(FStateTreeEvent NewEvent)
-{
-	// FInteractionPayLoad NewPayLoad =  static_cast<FInteractionPayLoad>(NewEvent.Payload);
-	StateTreeComponent->SendStateTreeEvent(NewEvent);
-
-
-	if (NewEvent.Tag == InteractionGameTags::Interaction_Begin)
-	{
-		InteractionTarget->OnInteractionBeginEvent(FindInteractingManager()->OwnerController->GetPawn());
-	}
-}
+// void AInteractableActor::SendEvent_Implementation(FStateTreeEvent NewEvent)
+// {
+// 	// FInteractionPayLoad NewPayLoad =  static_cast<FInteractionPayLoad>(NewEvent.Payload);
+// 	StateTreeComponent->SendStateTreeEvent(NewEvent);
+// 	
+// 	
+// 	if (NewEvent.Tag == InteractionGameTags::Interaction_Begin)
+// 	{
+// 		FInteractionBeginPayload BeginPayload = NewEvent.Payload.Get<FInteractionBeginPayload>();
+// 		InteractionTarget->OnInteractionBeginEvent(FindInteractingManager()->OwnerController->GetPawn());
+// 	}
+// 	if (NewEvent.Tag == InteractionGameTags::Interaction_Update)
+// 	{
+// 		FInteractionUpdatePayload UpdatePayload = NewEvent.Payload.Get<FInteractionUpdatePayload>();
+// 	}
+// 	if (NewEvent.Tag == InteractionGameTags::Interaction_End)
+// 	{
+// 		FInteractionEndPayload EndPayload = NewEvent.Payload.Get<FInteractionEndPayload>();
+// 	}
+// }
 
 
 void AInteractableActor::ServerOnInteractionBegin_Implementation(UInteractionManager* InteractingManager)

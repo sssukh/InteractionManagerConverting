@@ -33,7 +33,8 @@ public class Interaction : ModuleRules
 				"UMG",
 				"StateTreeModule",
 				"GameplayStateTreeModule",
-				"GameplayTags"
+				"GameplayTags",
+				"StructUtils"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
