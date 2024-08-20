@@ -1,0 +1,18 @@
+﻿#pragma once
+
+#include "NativeGameplayTags.h"
+
+
+namespace InteractionGameTags
+{
+	INTERACTION_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Interaction_Begin)
+	INTERACTION_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Interaction_Update)
+	INTERACTION_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Interaction_End)
+	INTERACTION_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Interaction_Reactivate)
+	INTERACTION_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Interaction_Deactivate)
+	
+	INTERACTION_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Interaction_Type_Food)
+	
+
+
+}
