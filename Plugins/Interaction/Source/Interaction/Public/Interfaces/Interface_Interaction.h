@@ -21,21 +21,32 @@ class INTERACTION_API IInterface_Interaction
 	GENERATED_BODY()
 
 public:
-	// UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Interaction System|Interface")
-	// void SendEvent(FStateTreeEvent NewEvent);
-		
-	// UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Interaction System|Interface")
-	// void OnInteractionBegin(APawn* NewInteractorPawn);
-	//
-	// UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Interaction System|Interface")
-	// void OnInteractionUpdated(float InAlpha,int32 InInRepeated,APawn* InInteractorPawn);
-	//
-	// UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Interaction System|Interface")
-	// void OnInteractionEnd(EInteractionResult InteractionResult, APawn* InteractionPawn);
-	//
-	// UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Interaction System|Interface")
-	// void OnInteractionReactivated(APawn* ForPawn);
-	//
-	// UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Interaction System|Interface")
-	// void OnInteractionDeactivated();
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Interaction System|Interface")
+	void SetEnableInteractivity(bool bIsEnable);
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Interaction System|Interface")
+	void ResetData();
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Interaction System|Interface")
+	void SendEvent(FStateTreeEvent NewEvent);
 };
+
+
+
+
+
+
+// UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Interaction System|Interface")
+// void OnInteractionBegin(APawn* NewInteractorPawn);
+//
+// UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Interaction System|Interface")
+// void OnInteractionUpdated(float InAlpha,int32 InInRepeated,APawn* InInteractorPawn);
+//
+// UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Interaction System|Interface")
+// void OnInteractionEnd(EInteractionResult InteractionResult, APawn* InteractionPawn);
+//
+// UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Interaction System|Interface")
+// void OnInteractionReactivated(APawn* ForPawn);
+//
+// UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category="Interaction System|Interface")
+// void OnInteractionDeactivated();

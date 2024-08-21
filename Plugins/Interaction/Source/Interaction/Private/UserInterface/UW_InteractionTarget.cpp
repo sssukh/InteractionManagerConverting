@@ -26,13 +26,13 @@ UUW_InteractionTarget::UUW_InteractionTarget(const FObjectInitializer& ObjectIni
                                                                                             InfoText(nullptr),
                                                                                             POI_Container(nullptr), Icon(nullptr),
                                                                                             POI_Icon(nullptr),
-                                                                                            Foreground(nullptr),
+                                                                                            Foreground(nullptr), Triangle(nullptr), Background(nullptr),
                                                                                             TriangleBox(nullptr),
                                                                                             SlideUp(nullptr),
                                                                                             LootText(nullptr),
                                                                                             InteractionRepeatUpdate(nullptr),
                                                                                             InteractionCompleted(nullptr), Flash(nullptr),
-                                                                                            InteractionTextAnim(nullptr),
+                                                                                            InteractionTextAnim(nullptr), InteractionCanceled(nullptr),
                                                                                             Rotate(nullptr), T_Circle(nullptr),
                                                                                             bDisplayProgress(false), bClearTarget(false),
                                                                                             bIsInteractionState(false),
@@ -80,7 +80,7 @@ void UUW_InteractionTarget::SetInteractionKeyText(const FKey& InKey)
 {
 	if (!IsValid(WidgetInteractionTarget))
 	{
-		LOG_WARNING_AND_SCREEN(5.0f,TEXT("WidgetInteractionTarget가 설정되어 있지 않습니다"))
+		LOG_WARNING_AND_SCREEN(5.0f, TEXT("WidgetInteractionTarget가 설정되어 있지 않습니다"))
 		return;
 	}
 

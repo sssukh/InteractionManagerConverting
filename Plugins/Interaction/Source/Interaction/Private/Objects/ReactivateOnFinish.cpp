@@ -18,7 +18,7 @@ void UReactivateOnFinish::Execute(EInteractionResult InteractionResult)
 		InteractionResult == EInteractionResult::Canceled && bIsCancel ||
 		InteractionResult == EInteractionResult::None)
 	{
-		for (AController* AssignedController : InteractionTarget->AssignedInteractors)
+		for (AController* AssignedController : InteractionTarget->AssignedControllers)
 		{
 			UInteractionManager* AssignedInteractionManager = AssignedController->GetComponentByClass<UInteractionManager>();
 			if (!AssignedInteractionManager) continue;
@@ -54,7 +54,7 @@ void UReactivateOnFinish::CheckForPendingTargets()
 		InteractionTarget->bInteractionEnabled = true;
 
 		// 컨트롤러가 실제로 재활성화된 대상과 겹치는지 확인하고 플레이어가 현재 겹치는 구성 요소를 캐시합니다.
-		if (InteractionTarget->AssignedInteractors.Contains(InteractionController))
+		if (InteractionTarget->AssignedControllers.Contains(InteractionController))
 		{
 			TArray<UPrimitiveComponent*> PawnOverlappingComponents;
 			InteractionController->GetPawn()->GetOverlappingComponents(PawnOverlappingComponents);

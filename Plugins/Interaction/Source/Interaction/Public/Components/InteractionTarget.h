@@ -1,5 +1,4 @@
-﻿
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "InteractionEnumStruct.h"
@@ -12,12 +11,16 @@ class USphereComponent;
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInteractionBegin, APawn*, InInteractorPawn);
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnInteractionEnd, EInteractionResult, InInteractionResult, APawn*, InInteractorPawn);
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnInteractionUpdated, float, InAlpha, int32, InRepeated, APawn*, InInteractorPawn);
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInteractionReactivated, APawn*, ForPawn);
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInteractionDeactivated);
+
 UCLASS(Blueprintable, BlueprintType, ClassGroup=("Interaction Plugin"), meta=(BlueprintSpawnableComponent))
 class INTERACTION_API UInteractionTarget : public UActorComponent
 {
@@ -65,6 +68,11 @@ public:
 
 	void OnDeactivated();
 
+	UFUNCTION(BlueprintCallable, Category="Interaction Target|Interaction")
+	void ApplyFinishMethod(UInteractionManager* InteractingManager, EInteractionResult InteractionResult);
+
+	UFUNCTION(BlueprintCallable, Category="Interaction Target|Interaction")
+	void InteractionFinishExecute(UInteractionManager* InteractingManager, EInteractionResult InteractionResult);
 
 	/*========================================================================================
 	*	Overlap Events
@@ -128,26 +136,16 @@ protected:
      */
 	bool TryGetInteractorComponents(AActor* OtherActor, UInteractionManager*& OutManagerInteractor);
 
+
 	/*========================================================================================
 	*	On Interaction Events
 	=========================================================================================*/
 public:
-	/**
-     * @brief 상호작용이 시작될 때 호출되는 이벤트 함수입니다.
-     *        이 함수는 상호작용이 시작되었을 때, 네트워크 핸들링 방법에 따라 다른 플레이어의 상호작용을 비활성화할 수 있습니다.
-     * 
-     * @param InInteractorPawn 상호작용을 시작한 APawn 객체
-     */
+
 	UFUNCTION(BlueprintCallable, Category="Interaction Target|On Interaction Events")
 	void OnInteractionBeginEvent(APawn* InInteractorPawn);
 
-	/**
-     * @brief 상호작용이 종료될 때 호출되는 이벤트 함수입니다.
-     *        이 함수는 상호작용이 종료되었을 때, 네트워크 핸들링 방법에 따라 다른 플레이어의 상호작용을 다시 활성화할 수 있습니다.
-     * 
-     * @param InInteractionResult 상호작용의 결과를 나타내는 EInteractionResult 열거형 값
-     * @param InInteractorPawn 상호작용을 종료한 APawn 객체
-     */
+	
 	UFUNCTION(Category="Interaction Target|On Interaction Events")
 	void OnInteractionEndEvent(EInteractionResult InInteractionResult, APawn* InInteractorPawn);
 
@@ -165,18 +163,11 @@ public:
 	UFUNCTION(BlueprintPure, Category="Interaction Target|Check")
 	bool CancelOnRelease();
 
+
 	/*========================================================================================
 	*	Visual
 	=========================================================================================*/
 public:
-	/**
-     * @brief 상호작용 대상의 하이라이트 상태를 설정하는 함수입니다.
-     *        이 함수는 HighlightedComponents 배열에 포함된 모든 UPrimitiveComponent에 대해
-     *        렌더링 커스텀 깊이(Render Custom Depth)를 설정하여 하이라이트 효과를 적용하거나 해제합니다.
-     * 
-     * @param bIsHighlighted 하이라이트 활성화 여부를 나타내는 bool 값. 
-     *        true이면 하이라이트를 적용하고, false이면 하이라이트를 해제합니다.
-     */
 	UFUNCTION(BlueprintCallable, Category="Interaction Target|Visual")
 	void SetHighlight(bool bIsHighlighted);
 
@@ -209,17 +200,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Interaction Target|Config|Interaction Settings")
 	bool bCoolDownEnabled = true;
 
-	// 상호작용 반복 시 쿨다운 시간(초)
+	// 상호작용 구역을 붙일 컴포넌트의 이름
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Interaction Target|Config|Interaction Settings")
-	float RepeatCoolDown = 1.0f;
-
-	// 상호작용 반복 횟수
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Interaction Target|Config|Interaction Settings")
-	int32 RepeatCount = 2;
-
-	// 홀드 상호작용의 유지 시간(초)
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Interaction Target|Config|Interaction Settings")
-	float HoldSeconds = 2.0f;
+	FString InteractionZoneComponentToAttach;
 
 	// 내부 구체 영역의 반지름
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Interaction Target|Config|Interaction Settings")
@@ -233,6 +216,21 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Interaction Target|Config|Interaction Settings")
 	EInteractionType InteractionType = EInteractionType::Tap;
 
+	// 상호작용 반복 시 쿨다운 시간(초)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Interaction Target|Config|Interaction Settings",
+		meta=(EditCondition="InteractionType == EInteractionType::Repeat", EditConditionHides="InteractionType == EInteractionType::Repeat"))
+	float RepeatCoolDown = 1.0f;
+
+	// 상호작용 반복 횟수
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Interaction Target|Config|Interaction Settings",
+		meta=(EditCondition="InteractionType == EInteractionType::Repeat", EditConditionHides="InteractionType == EInteractionType::Repeat"))
+	int32 RepeatCount = 2;
+
+	// 홀드 상호작용의 유지 시간(초)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Interaction Target|Config|Interaction Settings",
+		meta=(EditCondition="InteractionType == EInteractionType::Hold", EditConditionHides="InteractionType == EInteractionType::Hold"))
+	float HoldSeconds = 2.0f;
+
 	// 네트워크에서 상호작용 처리 방법 설정
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Interaction Target|Config|Interaction Settings")
 	EInteractionNetworkHandleMethod NetworkHandleMethod = EInteractionNetworkHandleMethod::KeepEnabled;
@@ -240,10 +238,6 @@ public:
 	// 상호작용 상태에 따른 텍스트를 저장하는 맵
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Interaction Target|Config|Interaction Settings")
 	TMap<EInteractionState, FText> InteractionText;
-
-	// 상호작용 구역을 붙일 컴포넌트의 이름
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Interaction Target|Config|Interaction Settings")
-	FString InteractionZoneComponentToAttach;
 
 
 	/*========================================================================================
@@ -268,7 +262,7 @@ public:
 
 	/*관심 지점(POI) 아이콘 깜박임 여부*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Interaction Target|Config|Marker Settings")
-	bool bFlashPOIIcon;
+	bool bFlashPOIIcon = false;
 
 	/* 삼각형 키 표시 여부*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Interaction Target|Config|Marker Settings")
@@ -331,7 +325,7 @@ public:
 
 	/*사용자 정의 키 사용 여부*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Interaction Target|Config|Key Settings")
-	bool bUseCustomKeys;
+	bool bUseCustomKeys = false;
 
 	/*사용자 정의 키 리스트*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Interaction Target|Config|Key Settings")
@@ -349,7 +343,7 @@ public:
 	 *	Interaction Target
 	 =========================================================================================*/
 public:
-	/*현재 상호작용중인지 여부*/
+	/*현재 상호작용중인가?*/
 	UPROPERTY(BlueprintReadWrite, Category="Interaction Target")
 	bool bIsInteracting = false;
 
@@ -359,7 +353,7 @@ public:
 
 	/*화면 반지름 비율*/
 	UPROPERTY(BlueprintReadWrite, Category="Interaction Target")
-	float ScreenRadiusPercent;
+	float ScreenRadiusPercent = 0;
 
 	/*위젯 여백 설정*/
 	UPROPERTY(BlueprintReadWrite, Category="Interaction Target")
@@ -375,12 +369,12 @@ public:
 
 	/*할당된 상호작용자 리스트*/
 	UPROPERTY(BlueprintReadWrite, Category="Interaction Target")
-	TArray<AController*> AssignedInteractors;
+	TArray<AController*> AssignedControllers;
 
 	/*마지막 상호작용 시간*/
 	UPROPERTY(BlueprintReadWrite, Category="Interaction Target")
 	float LastInteractedTime = 2.0f;
-	
+
 	/*디버그 모드 활성화 여부*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Interaction Target|Debug")
 	bool bEnableDebug = true;
@@ -410,8 +404,3 @@ public:
 	UPROPERTY(BlueprintAssignable, BlueprintCallable, Category="Manager Interaction Target|Delegate")
 	FOnInteractionDeactivated OnInteractionDeactivated;
 };
-
-
-
-
-

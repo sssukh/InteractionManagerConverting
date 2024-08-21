@@ -3,25 +3,19 @@
 #include "InteractionLog.h"
 
 #include "EnhancedInputSubsystems.h"
-#include "InteractionGameplayTags.h"
-#include "Actors/InteractableActor.h"
 #include "Components/InteractionTarget.h"
 #include "Components/PostProcessComponent.h"
 #include "Components/SphereComponent.h"
 #include "Interfaces/Interface_Interaction.h"
 
-#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetStringLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
-#include "Objects/InteractionFinish.h"
 
 #include "UserInterface/UW_InteractionTarget.h"
 
 
-// Sets default values for this component's properties
-UInteractionManager::UInteractionManager(): OwnerController(nullptr), PostProcessComponent(nullptr), bIsGamepad(false), bIsInteracting(false), bKeyJustPressed(false), RepeatCooldown(0),
-                                            CurrentHoldTime(0), Repeated(0),
+UInteractionManager::UInteractionManager(): OwnerController(nullptr), PostProcessComponent(nullptr), bIsGamepad(false), bIsInteracting(false), RepeatCooldown(0),
                                             CurrentInteractionMarker(nullptr),
                                             Outline_DynamicMaterial(nullptr),
                                             BestInteractionTarget(nullptr)
@@ -30,8 +24,6 @@ UInteractionManager::UInteractionManager(): OwnerController(nullptr), PostProces
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
 
-
-	// ...
 
 	// Material 경로로 CurrentMaterial 초기화
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> MaterialFinder(TEXT("/Interaction/Environment/Materials/PostProcess/M_OutlineMaterial.M_OutlineMaterial"));
@@ -54,33 +46,25 @@ void UInteractionManager::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// ...
 	ConstructPlayerEssentials();
 
 	ConstructPooledMarkerWidgets();
 }
 
-
 void UInteractionManager::ConstructPlayerEssentials()
 {
-	// 현재 오너(Actor)가 APlayerController인지 확인하고 캐스팅합니다.
 	APlayerController* CastController = Cast<APlayerController>(GetOwner());
 
-	// 캐스팅에 실패한 경우, 경고 메시지를 출력하고 함수 실행을 중지합니다.
 	if (!CastController)
 	{
 		LOG_WARNING_AND_SCREEN(5.0f, TEXT("APlayerController로 캐스팅에 실패했습니다"))
 		return;
 	}
 
-	// 캐스팅에 성공한 경우, 소유자 컨트롤러를 저장합니다.
 	OwnerController = CastController;
 
-	// 포스트 프로세스 컴포넌트를 생성합니다.
 	ConstructPostProcessComponent();
 
-	// 상호 작용 키를 주기적으로 업데이트하기 위한 타이머를 설정합니다.
-	// 타이머는 0.2초 간격으로 UpdateInteractionKeys 함수를 호출합니다.
 	GetWorld()->GetTimerManager().SetTimer(BeginUpdateKeys_TimerHandle, this, &UInteractionManager::UpdateInteractionKeys, 0.2f, false);
 }
 
@@ -95,12 +79,11 @@ void UInteractionManager::ConstructPooledMarkerWidgets()
 		return;
 	}
 
-	// DefaultWidgetPoolSize에 설정된 크기만큼 위젯 풀을 생성합니다.
 	for (int i = 0; i < DefaultWidgetPoolSize; ++i)
 	{
 		UUW_InteractionTarget* NewInteractionWidget = CreateWidget<UUW_InteractionTarget>(OwnerController, InteractionTargetWidgetClass); // InteractionTargetWidgetClass를 사용하여 새로운 상호작용 타겟 위젯을 생성합니다.
-		WidgetPool.AddUnique(NewInteractionWidget); // 생성된 위젯을 WidgetPool 배열에 추가합니다.
-		NewInteractionWidget->AddToPlayerScreen(); // 생성된 위젯을 화면에 추가하여 플레이어가 볼 수 있도록 합니다.
+		WidgetPool.AddUnique(NewInteractionWidget);
+		NewInteractionWidget->AddToPlayerScreen();
 	}
 }
 
@@ -108,15 +91,11 @@ void UInteractionManager::ConstructPostProcessComponent()
 {
 	APawn* OwnerPawn = OwnerController->GetPawn();
 
-	// UPostProcessComponent를 OwnerPawn에 추가합니다.
 	PostProcessComponent = NewObject<UPostProcessComponent>(OwnerPawn, UPostProcessComponent::StaticClass(), TEXT("PostProcessComponent"));
 	PostProcessComponent->RegisterComponent();
 	OwnerPawn->AddInstanceComponent(PostProcessComponent);
 
-	// CurrentMaterial을 기반으로 동적 머티리얼 인스턴스를 생성합니다.
 	Outline_DynamicMaterial = UMaterialInstanceDynamic::Create(CurrentMaterial, this);
-
-	// 포스트 프로세스 설정에서 WeightedBlendables 배열에 생성한 동적 머티리얼 인스턴스를 추가합니다.
 	PostProcessComponent->Settings.WeightedBlendables.Array.Add(FWeightedBlendable(1.0f, Outline_DynamicMaterial));
 }
 
@@ -139,32 +118,32 @@ void UInteractionManager::TickComponent(float DeltaTime, ELevelTick TickType, FA
 
 	if (GetOwner()->HasAuthority())
 	{
-		UInteractionTarget* NewTarget = FindBestInteractable();
-
-		UpdateBestInteractable(NewTarget);
-
-		if (IsValid(BestInteractionTarget))
-			ClientCheckPressedKey();
+		UInteractionTarget* NearTarget = FindBestInteractable();
+		UpdateBestInteractable(NearTarget);
+		
+		if (bDebug)
+		{
+			DrawDebugInteractor();
+		}
 	}
-
-	if (bDebug)
-		DrawDebugInteractor();
 }
 
 void UInteractionManager::DrawDebugInteractor()
 {
 	FString A = TEXT("Interaction Targets: ");
 	FString B = UKismetStringLibrary::Conv_IntToString(InteractionTargets.Num());
+
 	FString C = TEXT("\r\nPoint Of Interests: ");
 	FString D = UKismetStringLibrary::Conv_IntToString(PointOfInterests.Num());
+
 	FString E = TEXT("\r\nPending Targets: ");
 	FString F = UKismetStringLibrary::Conv_IntToString(PendingTargets.Num());
+
 	FString G = TEXT("\r\nMarker: ");
 	FString H = UKismetSystemLibrary::GetDisplayName(CurrentInteractionMarker);
 
 	FString I = TEXT("\r\nDeactivatedTargets: ");
 	FString J = UKismetStringLibrary::Conv_IntToString(DeactivatedTargets.Num());
-
 
 	FString DebugMessage = UKismetStringLibrary::Concat_StrStr(A, B);
 	DebugMessage = UKismetStringLibrary::Concat_StrStr(DebugMessage, C);
@@ -227,18 +206,16 @@ UInteractionTarget* UInteractionManager::FindBestInteractable()
 	return BestTarget; // 가장 적합한 타겟을 반환합니다.
 }
 
-
+//도마에요
 void UInteractionManager::UpdateBestInteractable(UInteractionTarget* NewTarget)
 {
 	// 새로운 상호작용 대상이 유효하고, 현재 상호작용 대상과 다를 경우 처리
 	if (IsValid(NewTarget) && BestInteractionTarget != NewTarget)
 	{
-		// 기존 상호작용 대상이 유효한 경우, 선택 해제 처리
 		if (IsValid(BestInteractionTarget))
 		{
 			ClientSetNewTarget(BestInteractionTarget, false);
 
-			// 상호작용 중인 경우, 상호작용을 중단하고 종료 이벤트를 호출
 			if (bIsInteracting)
 			{
 				bIsInteracting = false;
@@ -246,30 +223,29 @@ void UInteractionManager::UpdateBestInteractable(UInteractionTarget* NewTarget)
 				if (BestInteractionTarget->OnInteractionEnd.IsBound())
 					BestInteractionTarget->OnInteractionEnd.Broadcast(EInteractionResult::Canceled, OwnerController->GetPawn());
 
-
-				ClientResetData();
+				if (BestInteractionTarget->OwnerReference->GetClass()->ImplementsInterface(UInterface_Interaction::StaticClass()))
+					IInterface_Interaction::Execute_ResetData(BestInteractionTarget->OwnerReference);
 			}
 		}
 
 		BestInteractionTarget = NewTarget;
 		ClientSetNewTarget(BestInteractionTarget, true);
 	}
-	else if (!IsValid(NewTarget)) // 새로운 상호작용 대상이 유효하지 않은 경우
+	else if (!IsValid(NewTarget))
 	{
 		if (IsValid(BestInteractionTarget))
 		{
-			ClientSetNewTarget(BestInteractionTarget, false); // 기존 대상의 선택을 해제
+			ClientSetNewTarget(BestInteractionTarget, false);
 
-			// 상호작용 중인 경우, 상호작용을 중단하고 종료 이벤트를 호출
 			if (bIsInteracting)
 			{
 				bIsInteracting = false;
 
-
 				if (BestInteractionTarget->OnInteractionEnd.IsBound())
 					BestInteractionTarget->OnInteractionEnd.Broadcast(EInteractionResult::Canceled, OwnerController->GetPawn());
 
-				ClientResetData();
+				if (BestInteractionTarget->GetOwner()->GetClass()->ImplementsInterface(UInterface_Interaction::StaticClass()))
+					IInterface_Interaction::Execute_ResetData(BestInteractionTarget->GetOwner());
 			}
 
 			BestInteractionTarget = nullptr;
@@ -278,33 +254,10 @@ void UInteractionManager::UpdateBestInteractable(UInteractionTarget* NewTarget)
 	}
 }
 
-void UInteractionManager::ApplyFinishMethod(UInteractionTarget* InteractionTarget, EInteractionResult InteractionResult)
-{
-	bIsInteracting = false;
-
-	ClientResetData();
-
-
-	if (BestInteractionTarget->OnInteractionEnd.IsBound())
-		BestInteractionTarget->OnInteractionEnd.Broadcast(EInteractionResult::Completed, OwnerController->GetPawn());
-
-
-	if (IsValid(InteractionTarget->InteractionFinishInstance))
-	{
-		InteractionTarget->InteractionFinishInstance->InitializeOnFinish(this, InteractionTarget);
-		InteractionTarget->InteractionFinishInstance->Execute(InteractionResult);
-	}
-}
-
-void UInteractionManager::ReceiveAnyKey(FKey InKey)
-{
-	bIsGamepad = InKey.IsGamepadKey();
-}
-
-bool UInteractionManager::IsInteractable(UInteractionTarget* ItemToFind)
+bool UInteractionManager::IsInteractable(UInteractionTarget* InteractionTarget)
 {
 	// 상호작용 대상이 활성화되어 있고, 대기 목록이나 비활성화된 목록에 포함되지 않은 경우에만 true를 반환합니다.
-	return ItemToFind->IsInteractionEnabled() && !(PendingTargets.Contains(ItemToFind) || DeactivatedTargets.Contains(ItemToFind));
+	return InteractionTarget->IsInteractionEnabled() && !(PendingTargets.Contains(InteractionTarget) || DeactivatedTargets.Contains(InteractionTarget));
 }
 
 bool UInteractionManager::GetInteractionKeys(TArray<FKey>& OutInteractionKeys)
@@ -398,62 +351,13 @@ void UInteractionManager::OnNewTargetSelectedClientSide(UInteractionTarget* NewT
 
 void UInteractionManager::OnInteractionTargetDestroyed(AActor* DestroyedActor)
 {
-	// 이것은 OnActorDestroyed에 대한 바인딩된 이벤트입니다. 대상이 파괴될 때마다 대상에서 제거되는지 확인합니다.
-	UInteractionTarget* ActorInteractionTarget = DestroyedActor->GetComponentByClass<UInteractionTarget>();
-	if (!ActorInteractionTarget)
-		return;
+	UInteractionTarget* InteractionTarget = DestroyedActor->GetComponentByClass<UInteractionTarget>();
+	if (!InteractionTarget) return;
 
-	InteractionTargets.Remove(ActorInteractionTarget);
-	PointOfInterests.Remove(ActorInteractionTarget);
-	ClientOnInteractionTargetDestroyed(ActorInteractionTarget);
+	InteractionTargets.Remove(InteractionTarget);
+	PointOfInterests.Remove(InteractionTarget);
+	ClientOnInteractionTargetDestroyed(InteractionTarget);
 	DestroyedActor->OnDestroyed.RemoveAll(this);
-}
-
-void UInteractionManager::ServerOnInteractionUpdated_Implementation(UInteractionTarget* InteractionTarget, float InAlpha, int32 InRepeated, APawn* InteractorPawn)
-{
-	if (BestInteractionTarget->OnInteractionUpdated.IsBound())
-		BestInteractionTarget->OnInteractionUpdated.Broadcast(InAlpha, InRepeated, InteractorPawn);
-}
-
-void UInteractionManager::ServerOnInteractionFinished_Implementation(UInteractionTarget* InteractionTarget, EInteractionResult InteractionResult)
-{
-	ApplyFinishMethod(InteractionTarget, InteractionResult);
-}
-
-void UInteractionManager::ServerOnInteractionBegin_Implementation(UInteractionTarget* InteractionTarget)
-{
-	if (BestInteractionTarget->OnInteractionBegin.IsBound())
-		BestInteractionTarget->OnInteractionBegin.Broadcast(OwnerController->GetPawn());
-
-	bIsInteracting = true;
-}
-
-void UInteractionManager::ClientCheckPressedKey_Implementation()
-{
-	TArray<FKey> TakeInteractionKeys;
-	if (!GetInteractionKeys(TakeInteractionKeys))
-	{
-		LOG_WARNING_AND_SCREEN(5.0f, TEXT("상호작용 키가 존재하지 않습니다"));
-		return;
-	}
-
-	for (FKey& Key : TakeInteractionKeys)
-	{
-		if (OwnerController->WasInputKeyJustPressed(Key))
-		{
-			LastPressedKey = Key;
-			break;
-		}
-	}
-
-	if (AInteractableActor* InteractableActor = Cast<AInteractableActor>(BestInteractionTarget->GetOwner()))
-		InteractableActor->TryTakeAction(this);
-
-	if (OwnerController->WasInputKeyJustPressed(LastPressedKey))
-		bKeyJustPressed = true;
-
-	if (OwnerController->WasInputKeyJustReleased(LastPressedKey))
-		bKeyJustPressed = false;
 }
 
 void UInteractionManager::ServerRequestAssignInteractor_Implementation(bool bIsAdd, UInteractionTarget* InteractionTarget)
@@ -485,20 +389,27 @@ void UInteractionManager::OnInteractionTargetUpdatedServerSide(bool bIsAdd, UInt
 {
 	if (bIsAdd)
 	{
-		// 상호작용 타겟이 상호작용 가능한 상태인지 확인합니다.
 		if (IsInteractable(InteractionTarget))
 		{
-			// 클라이언트에게 상호작용 타겟이 추가되었음을 알립니다.
+			if (InteractionTarget->GetOwner()->GetClass()->ImplementsInterface(UInterface_Interaction::StaticClass()))
+			{
+				IInterface_Interaction::Execute_SetEnableInteractivity(InteractionTarget->GetOwner(),true);
+			}
 			ClientUpdateInteractionTargets(true, InteractionTarget);
-			// 상호작용 타겟 리스트에 새로운 타겟을 추가합니다.
 			InteractionTargets.Add(InteractionTarget);
 		}
 	}
 	else
 	{
-		// 상호작용 타겟 리스트에서 해당 타겟을 제거합니다.
+		if (!InteractionTarget->bIsInteracting)
+		{
+			if (InteractionTarget->OwnerReference->GetClass()->ImplementsInterface(UInterface_Interaction::StaticClass()))
+			{
+				IInterface_Interaction::Execute_SetEnableInteractivity(InteractionTarget->OwnerReference, false);
+			}
+		}
+		
 		InteractionTargets.Remove(InteractionTarget);
-		// 클라이언트에게 상호작용 타겟이 제거되었음을 알립니다.
 		ClientUpdateInteractionTargets(false, InteractionTarget);
 	}
 }
@@ -517,114 +428,67 @@ void UInteractionManager::OnInteractionTargetUpdatedClientSide(bool bIsAdd, UInt
 
 void UInteractionManager::OnPointOfInterestUpdatedServerSide(bool bIsAdd, UInteractionTarget* InteractionTarget)
 {
+	if (!IsValid(InteractionTarget))
+		return;
+
 	if (bIsAdd)
 	{
-		// 상호작용 대상이 유효하고, 상호작용이 가능할 때 처리
 		if (IsInteractable(InteractionTarget))
 		{
-			// 관심 지점 목록에 상호작용 대상을 추가
 			PointOfInterests.Add(InteractionTarget);
-			// 상호작용 대상이 소멸될 때 호출될 델리게이트에 바인딩
 			InteractionTarget->OwnerReference->OnDestroyed.AddDynamic(this, &UInteractionManager::OnInteractionTargetDestroyed);
-			// 클라이언트 측 관심 지점 목록을 업데이트
 			ClientUpdatePointOfInterests(true, InteractionTarget);
 		}
-		else
+		else if (InteractionTarget->IsReactivationEnabled())
 		{
-			// 상호작용 대상이 재활성화 가능하다면, 대기 목록에 추가
-			if (InteractionTarget->IsReactivationEnabled())
-			{
-				InteractionTarget->InteractionFinishInstance->InitializeOnFinish(this, InteractionTarget);
-				InteractionTarget->InteractionFinishInstance->Execute(EInteractionResult::None);
-			}
+			InteractionTarget->InteractionFinishExecute(this, EInteractionResult::None);
 		}
 	}
 	else
 	{
-		// 상호작용 대상이 유효한 경우에만 처리
-		if (IsValid(InteractionTarget))
-		{
-			// 관심 지점 목록에서 상호작용 대상을 제거
-			PointOfInterests.Remove(InteractionTarget);
-			// 클라이언트 측 관심 지점 목록을 업데이트
-			ClientUpdatePointOfInterests(false, InteractionTarget);
-		}
+		PointOfInterests.Remove(InteractionTarget);
+		ClientUpdatePointOfInterests(false, InteractionTarget);
 	}
 }
 
 void UInteractionManager::OnPointOfInterestUpdatedClientSide(bool bIsAdd, UInteractionTarget* InteractionTarget)
 {
+	if (!InteractionTarget)
+		return;
+
 	if (bIsAdd)
 	{
-		// POI가 추가될 경우 위젯 정보를 업데이트합니다.
+		// 위젯 정보를 업데이트합니다.
 		InteractionTarget->UpdateWidgetInfo(WidgetScreenMargin, ScreenRadiusPercent);
-		UUW_InteractionTarget* FindWidget = FindEmptyWidget();
 
-		// 비어 있는 위젯이 있는지 확인하여 재사용합니다.
-		if (IsValid(FindWidget))
+		// 빈 위젯을 찾거나, 새로운 위젯을 생성하여 상호작용 타겟을 설정합니다.
+		UUW_InteractionTarget* InteractionWidget = FindEmptyWidget();
+
+		if (!InteractionWidget && OwnerController->IsLocalPlayerController())
 		{
-			FindWidget->UpdateInteractionTarget(InteractionTarget);
+			InteractionWidget = CreateWidget<UUW_InteractionTarget>(OwnerController, InteractionTargetWidgetClass);
+			WidgetPool.AddUnique(InteractionWidget);
+			InteractionWidget->AddToPlayerScreen();
 		}
-		//위젯이 존재하지 않는다면 위젯을 생성합니다.
-		else
+
+		if (InteractionWidget)
 		{
-			// 로컬 플레이어 컨트롤러에서 새 위젯을 생성하여 POI를 표시합니다.
-			if (OwnerController->IsLocalPlayerController())
-			{
-				UUW_InteractionTarget* NewInteractionWidget = CreateWidget<UUW_InteractionTarget>(OwnerController, InteractionTargetWidgetClass);
-				WidgetPool.AddUnique(NewInteractionWidget);
-				NewInteractionWidget->AddToPlayerScreen();
-				NewInteractionWidget->UpdateInteractionTarget(InteractionTarget);
-			}
+			InteractionWidget->UpdateInteractionTarget(InteractionTarget);
 		}
 	}
 	else
 	{
-		// POI가 제거될 경우, 관련 위젯을 초기화합니다.
-		UUW_InteractionTarget* FindWidget = FindWidgetByInteractionTarget(InteractionTarget);
-		if (IsValid(FindWidget))
+		// 상호작용 타겟과 연결된 위젯을 찾아서 초기화합니다.
+		if (UUW_InteractionTarget* AssociatedWidget = FindWidgetByInteractionTarget(InteractionTarget))
 		{
-			FindWidget->UpdateInteractionTarget(nullptr);
+			AssociatedWidget->UpdateInteractionTarget(nullptr);
 		}
 	}
-}
-
-void UInteractionManager::OnInteractionUpdated(UInteractionTarget* InteractionTarget, float InAlpha, int32 InRepeated)
-{
-	// if (InteractionTarget->GetOwner()->GetClass()->ImplementsInterface(UInterface_Interaction::StaticClass()))
-	// {
-	// 	FStateTreeEvent SendEvent;
-	// 	SendEvent.Tag = InteractionGameTags::Interaction_Update;
-	// 	SendEvent.Payload = FInstancedStruct::Make(FInteractionUpdatePayload(InAlpha,InRepeated,OwnerController->GetPawn()));
-	// 	IInterface_Interaction::Execute_SendEvent(InteractionTarget->GetOwner(), SendEvent);
-	// }
-
-	if (InteractionTarget->OnInteractionUpdated.IsBound())
-		InteractionTarget->OnInteractionUpdated.Broadcast(InAlpha, InRepeated, OwnerController->GetPawn());
-
-	// 현재 환경이 스탠드얼론(싱글플레이어) 모드가 아닌 경우, 서버와 상호작용 상태를 동기화합니다.
-	if (!UKismetSystemLibrary::IsStandalone(this))
-	{
-		ServerOnInteractionUpdated(InteractionTarget, InAlpha, InRepeated, OwnerController->GetPawn());
-	}
-}
-
-bool UInteractionManager::IsHoldingKey()
-{
-	return OwnerController->IsInputKeyDown(LastPressedKey) && bKeyJustPressed;
 }
 
 void UInteractionManager::ServerUpdateInteractionTargets_Implementation(bool bIsAdd, UInteractionTarget* InteractionTarget)
 {
 	OnInteractionTargetUpdatedServerSide(bIsAdd, InteractionTarget);
-}
-
-void UInteractionManager::ClientResetData_Implementation()
-{
-	bKeyJustPressed = false;
-	LastPressedKey = FKey();
-	CurrentHoldTime = 0.0f;
-	Repeated = 0;
 }
 
 void UInteractionManager::ClientSetNewTarget_Implementation(UInteractionTarget* NewTarget, bool bIsSelected)

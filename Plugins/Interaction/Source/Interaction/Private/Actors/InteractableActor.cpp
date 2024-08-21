@@ -7,11 +7,12 @@
 #include "Components/StateTreeComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Objects/InteractionFinish.h"
 #include "UserInterface/UW_InteractionTarget.h"
 
 AInteractableActor::AInteractableActor()
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	// 매 프레임마다 Tick()을 호출하도록 이 액터를 설정합니다.  필요하지 않은 경우 이 기능을 꺼서 성능을 향상시킬 수 있습니다.
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = false;
 
@@ -29,23 +30,40 @@ AInteractableActor::AInteractableActor()
 void AInteractableActor::BeginPlay()
 {
 	Super::BeginPlay();
-
-	
 }
 
 void AInteractableActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	
 
-	// UInteractionManager* InteractingManager = FindInteractingManager();
-	// if (IsValid(InteractingManager) && InteractionTarget->bInteractionEnabled)
-	// {
-	// 	TryTakeAction(InteractingManager);
-	// }
+	UInteractionManager* InteractingManager = FindInteractingManager();
+	if (IsValid(InteractingManager))
+	{
+		ClientCheckPressedKey(InteractingManager);
+	}
 }
 
 void AInteractableActor::TryTakeAction(UInteractionManager* InteractingManager)
 {
+	TArray<FKey> InteractionKeys;
+	if (!InteractingManager->GetInteractionKeys(InteractionKeys))
+	{
+		LOG_WARNING_AND_SCREEN(5.0f, TEXT("상호작용 키가 존재하지 않습니다"));
+		return;
+	}
+
+	for (FKey& Key : InteractionKeys)
+	{
+		if (InteractingManager->OwnerController->WasInputKeyJustPressed(Key))
+		{
+			LastPressedKey = Key;
+			break;
+		}
+	}
+	
+	OwnedInteractionWidget = InteractingManager->FindWidgetByInteractionTarget(InteractionTarget);
+
 	if (InteractionTarget->InteractionType == EInteractionType::Tap)
 	{
 		HandleTapInteraction(InteractingManager);
@@ -58,11 +76,17 @@ void AInteractableActor::TryTakeAction(UInteractionManager* InteractingManager)
 	{
 		HandleRepeatInteraction(InteractingManager);
 	}
+
+	if (InteractingManager->OwnerController->WasInputKeyJustPressed(LastPressedKey))
+		bKeyJustPressed = true;
+
+	if (InteractingManager->OwnerController->WasInputKeyJustReleased(LastPressedKey))
+		bKeyJustPressed = false;
 }
 
 UInteractionManager* AInteractableActor::FindInteractingManager()
 {
-	for (AController* AssignedInteractor : InteractionTarget->AssignedInteractors)
+	for (AController* AssignedInteractor : InteractionTarget->AssignedControllers)
 	{
 		UInteractionManager* AssignedInteractionManager = Cast<UInteractionManager>(AssignedInteractor->GetComponentByClass(UInteractionManager::StaticClass()));
 		if (!AssignedInteractionManager) continue;
@@ -77,100 +101,87 @@ UInteractionManager* AInteractableActor::FindInteractingManager()
 
 void AInteractableActor::HandleTapInteraction(UInteractionManager* InteractingManager)
 {
-	if (InteractingManager->bKeyJustPressed)
+	if (bKeyJustPressed)
 	{
 		ServerOnInteractionBegin(InteractingManager);
-		InteractingManager->CurrentInteractionMarker->UpdateInteractionText(true, EInteractionState::Done);
-		InteractingManager->CurrentInteractionMarker->PlayInteractionCompletedAnimation(EInteractionResult::Completed);
-		InteractingManager->ServerOnInteractionFinished(InteractionTarget, EInteractionResult::Completed);
+		OwnedInteractionWidget->UpdateInteractionText(true, EInteractionState::Done);
+		OwnedInteractionWidget->PlayInteractionCompletedAnimation(EInteractionResult::Completed);
+		ServerOnInteractionFinished(InteractingManager, EInteractionResult::Completed);
 	}
 }
 
 void AInteractableActor::HandleHoldInteraction(UInteractionManager* InteractingManager)
 {
-	// 키가 눌려있고, 키가 방금 눌렸는지 확인
-	if (InteractingManager->IsHoldingKey())
+	if (InteractingManager->OwnerController->IsInputKeyDown(LastPressedKey) && bKeyJustPressed)
 	{
-		// 상호작용이 처음 시작되었을 때
 		if (CurrentHoldTime == 0.0f)
 		{
-			InteractingManager->CurrentInteractionMarker->UpdateInteractionText(false, EInteractionState::Interacting);
-			InteractingManager->ServerOnInteractionBegin(InteractionTarget);
+			OwnedInteractionWidget->UpdateInteractionText(false, EInteractionState::Interacting);
+			ServerOnInteractionBegin(InteractingManager);
 		}
 
-		// 누적된 홀드 시간 계산
 		double DeltaTime = UGameplayStatics::GetWorldDeltaSeconds(this) + CurrentHoldTime;
 		CurrentHoldTime = DeltaTime;
 
-		// 누적된 홀드 시간을 상호작용 완료 시간을 기준으로 정규화하여 비율 계산
 		float NormalizedHoldTime = UKismetMathLibrary::NormalizeToRange(DeltaTime, 0.0f, InteractionTarget->HoldSeconds);
-		float InteractionProgress = FMath::Min(NormalizedHoldTime, 1.0f);
+		float InteractionRatio = FMath::Min(NormalizedHoldTime, 1.0f);
 
-		// 상호작용 진행 상태 업데이트
-		InteractingManager->CurrentInteractionMarker->SetInteractionPercent(InteractionProgress);
-		InteractingManager->OnInteractionUpdated(InteractionTarget, InteractionProgress, 0);
+		OwnedInteractionWidget->SetInteractionPercent(InteractionRatio);
+		OnInteractionUpdated(InteractingManager, InteractionRatio, 0);
 
-		// 상호작용이 완료되었을 때
-		if (InteractionProgress == 1.0f)
+		if (InteractionRatio == 1.0f)
 		{
 			CurrentHoldTime = 0.0f;
-			InteractingManager->CurrentInteractionMarker->PlayInteractionCompletedAnimation(EInteractionResult::Completed);
-			InteractingManager->ServerOnInteractionFinished(InteractionTarget, EInteractionResult::Completed);
+			OwnedInteractionWidget->PlayInteractionCompletedAnimation(EInteractionResult::Completed);
+			ServerOnInteractionFinished(InteractingManager, EInteractionResult::Completed);
 		}
 	}
 	else
 	{
-		// 누적된 홀드 시간이 0이라면 처리할 것이 없음
 		if (CurrentHoldTime == 0.0f)
 			return;
 
-		// 상호작용이 쿨다운이 활성화된 상태에서 중단되었을 때
 		if (InteractionTarget->bCoolDownEnabled)
 		{
-			// 쿨다운 적용하여 홀드 시간 감소
 			CurrentHoldTime = FMath::Max(CurrentHoldTime - UGameplayStatics::GetWorldDeltaSeconds(this), 0.0f);
 
-			// 정규화된 홀드 시간과 비율 계산
 			float NormalizedHoldTime = UKismetMathLibrary::NormalizeToRange(CurrentHoldTime, 0.0f, InteractionTarget->HoldSeconds);
-			float InteractionProgress = FMath::Max(NormalizedHoldTime, 0.0f);
-			InteractingManager->CurrentInteractionMarker->SetInteractionPercent(InteractionProgress);
+			float InteractionRatio = FMath::Max(NormalizedHoldTime, 0.0f);
+			OwnedInteractionWidget->SetInteractionPercent(InteractionRatio);
 
-			// 쿨다운으로 인해 홀드 시간이 0이 되면 상호작용 취소
 			if (CurrentHoldTime == 0.0f)
 			{
-				InteractingManager->CurrentInteractionMarker->PlayInteractionCompletedAnimation(EInteractionResult::Canceled);
-				InteractingManager->ServerOnInteractionFinished(InteractionTarget, EInteractionResult::Canceled);
+				OwnedInteractionWidget->PlayInteractionCompletedAnimation(EInteractionResult::Canceled);
+				ServerOnInteractionFinished(InteractingManager, EInteractionResult::Canceled);
 			}
 			else
 			{
-				// 상호작용이 계속 진행 중일 때 업데이트
-				InteractingManager->OnInteractionUpdated(InteractionTarget, InteractionProgress, 0);
+				OnInteractionUpdated(InteractingManager, InteractionRatio, 0);
 				if (InteractionTarget->CancelOnRelease())
 				{
-					InteractingManager->ServerOnInteractionFinished(InteractionTarget, EInteractionResult::Canceled);
+					ServerOnInteractionFinished(InteractingManager, EInteractionResult::Canceled);
 				}
 			}
 		}
 		else
 		{
-			// 쿨다운이 비활성화된 경우 모든 것을 재설정하고 상호작용을 취소
 			CurrentHoldTime = 0.0f;
-			InteractingManager->CurrentInteractionMarker->SetInteractionPercent(0.0f);
-			InteractingManager->CurrentInteractionMarker->PlayInteractionCompletedAnimation(EInteractionResult::Canceled);
-			InteractingManager->ServerOnInteractionFinished(InteractionTarget, EInteractionResult::Canceled);
+			OwnedInteractionWidget->SetInteractionPercent(0.0f);
+			OwnedInteractionWidget->PlayInteractionCompletedAnimation(EInteractionResult::Canceled);
+			ServerOnInteractionFinished(InteractingManager, EInteractionResult::Canceled);
 		}
 	}
 }
 
 void AInteractableActor::HandleRepeatInteraction(UInteractionManager* InteractingManager)
 {
-	if (InteractingManager->OwnerController->WasInputKeyJustPressed(InteractingManager->LastPressedKey))
+	if (InteractingManager->OwnerController->WasInputKeyJustPressed(LastPressedKey))
 	{
 		RepeatCooldown = InteractionTarget->RepeatCoolDown;
 
 		if (Repeated == 0)
 		{
-			InteractingManager->CurrentInteractionMarker->UpdateInteractionText(false, EInteractionState::Interacting);
+			OwnedInteractionWidget->UpdateInteractionText(false, EInteractionState::Interacting);
 			ServerOnInteractionBegin(InteractingManager);
 		}
 
@@ -178,21 +189,20 @@ void AInteractableActor::HandleRepeatInteraction(UInteractionManager* Interactin
 		float NormalizeRepeatTime = UKismetMathLibrary::NormalizeToRange(Repeated, 0.0f, InteractionTarget->RepeatCount);
 		float RatioValue = FMath::Min(NormalizeRepeatTime, 1.0f);
 
-		InteractingManager->OnInteractionUpdated(InteractionTarget, RatioValue, Repeated);
-		InteractingManager->CurrentInteractionMarker->SetInteractionPercent(RatioValue);
+		OnInteractionUpdated(InteractingManager, RatioValue, Repeated);
+		OwnedInteractionWidget->SetInteractionPercent(RatioValue);
 
 		if (Repeated == InteractionTarget->RepeatCount)
 		{
 			Repeated = 0;
-			InteractingManager->CurrentInteractionMarker->PlayInteractionCompletedAnimation(EInteractionResult::Completed);
-			InteractingManager->ServerOnInteractionFinished(InteractionTarget, EInteractionResult::Completed);
+			OwnedInteractionWidget->PlayInteractionCompletedAnimation(EInteractionResult::Completed);
+			ServerOnInteractionFinished(InteractingManager, EInteractionResult::Completed);
 		}
 		else
 		{
-			InteractingManager->CurrentInteractionMarker->PlayInteractionUpdateAnimation();
+			OwnedInteractionWidget->PlayInteractionUpdateAnimation();
 		}
 	}
-
 
 	if (Repeated != 0 && InteractionTarget->bCoolDownEnabled)
 	{
@@ -200,23 +210,23 @@ void AInteractableActor::HandleRepeatInteraction(UInteractionManager* Interactin
 
 		if (RepeatCooldown == 0.0f)
 		{
-			InteractingManager->CurrentInteractionMarker->PlayInteractionCompletedAnimation(EInteractionResult::Canceled);
+			OwnedInteractionWidget->PlayInteractionCompletedAnimation(EInteractionResult::Canceled);
 			Repeated = Repeated - 1;
 
 			if (Repeated == 0)
 			{
-				InteractingManager->CurrentInteractionMarker->SetInteractionPercent(0.0f);
-				InteractingManager->CurrentInteractionMarker->PlayInteractionCompletedAnimation(EInteractionResult::Canceled);
-				InteractingManager->ServerOnInteractionFinished(InteractionTarget, EInteractionResult::Canceled);
-				InteractingManager->CurrentInteractionMarker->ResetProgress();
-				InteractingManager->CurrentInteractionMarker->UpdateInteractionText(false, EInteractionState::Waiting);
+				OwnedInteractionWidget->SetInteractionPercent(0.0f);
+				OwnedInteractionWidget->PlayInteractionCompletedAnimation(EInteractionResult::Canceled);
+				ServerOnInteractionFinished(InteractingManager, EInteractionResult::Canceled);
+				OwnedInteractionWidget->ResetProgress();
+				OwnedInteractionWidget->UpdateInteractionText(false, EInteractionState::Waiting);
 			}
 			else
 			{
 				RepeatCooldown = InteractionTarget->RepeatCoolDown;
 			}
 
-			InteractingManager->OnInteractionUpdated(InteractionTarget, 0.0f, Repeated);
+			OnInteractionUpdated(InteractingManager, 0.0f, Repeated);
 		}
 		else
 		{
@@ -224,39 +234,80 @@ void AInteractableActor::HandleRepeatInteraction(UInteractionManager* Interactin
 			float RatioValue = FMath::Min(NormalizeRepeatTime, 1.0f);
 
 			float DivideValue = (InteractionTarget->RepeatCoolDown * Repeated) / RatioValue;
-			float NewPercent = InteractingManager->CurrentInteractionMarker->CurrentPercent - (UGameplayStatics::GetWorldDeltaSeconds(this) * (1.0f / DivideValue));
-			InteractingManager->CurrentInteractionMarker->SetInteractionPercent(NewPercent);
+			float NewPercent = OwnedInteractionWidget->CurrentPercent - (UGameplayStatics::GetWorldDeltaSeconds(this) * (1.0f / DivideValue));
+			OwnedInteractionWidget->SetInteractionPercent(NewPercent);
 		}
 	}
 }
 
-// void AInteractableActor::SendEvent_Implementation(FStateTreeEvent NewEvent)
-// {
-// 	// FInteractionPayLoad NewPayLoad =  static_cast<FInteractionPayLoad>(NewEvent.Payload);
-// 	StateTreeComponent->SendStateTreeEvent(NewEvent);
-// 	
-// 	
-// 	if (NewEvent.Tag == InteractionGameTags::Interaction_Begin)
-// 	{
-// 		FInteractionBeginPayload BeginPayload = NewEvent.Payload.Get<FInteractionBeginPayload>();
-// 		InteractionTarget->OnInteractionBeginEvent(FindInteractingManager()->OwnerController->GetPawn());
-// 	}
-// 	if (NewEvent.Tag == InteractionGameTags::Interaction_Update)
-// 	{
-// 		FInteractionUpdatePayload UpdatePayload = NewEvent.Payload.Get<FInteractionUpdatePayload>();
-// 	}
-// 	if (NewEvent.Tag == InteractionGameTags::Interaction_End)
-// 	{
-// 		FInteractionEndPayload EndPayload = NewEvent.Payload.Get<FInteractionEndPayload>();
-// 	}
-// }
+void AInteractableActor::OnInteractionUpdated(UInteractionManager* InteractingManager, float InAlpha, int32 InRepeated)
+{
+	if (InteractionTarget->OnInteractionUpdated.IsBound())
+		InteractionTarget->OnInteractionUpdated.Broadcast(InAlpha, InRepeated, InteractingManager->OwnerController->GetPawn());
 
+	FStateTreeEvent SendEvent;
+	SendEvent.Tag = InteractionGameTags::Interaction_Update;
+	StateTreeComponent->SendStateTreeEvent(SendEvent);
+
+	// 현재 환경이 스탠드얼론(싱글플레이어) 모드가 아닌 경우, 서버와 상호작용 상태를 동기화합니다.
+	if (!UKismetSystemLibrary::IsStandalone(this))
+	{
+		ServerOnInteractionUpdated(InteractingManager, InAlpha, InRepeated, InteractingManager->OwnerController->GetPawn());
+	}
+}
+
+void AInteractableActor::SetEnableInteractivity_Implementation(bool bIsEnable)
+{
+	SetActorTickEnabled(bIsEnable);
+	
+}
+
+void AInteractableActor::ResetData_Implementation()
+{
+	ClientResetData();
+}
+
+void AInteractableActor::SendEvent_Implementation(FStateTreeEvent NewEvent)
+{
+	StateTreeComponent->SendStateTreeEvent(NewEvent);
+}
+
+void AInteractableActor::ClientCheckPressedKey_Implementation(UInteractionManager* InteractingManager)
+{
+	TryTakeAction(InteractingManager);
+}
+
+void AInteractableActor::ClientResetData_Implementation()
+{
+	bKeyJustPressed = false;
+	LastPressedKey = FKey();
+	CurrentHoldTime = 0.0f;
+	Repeated = 0;
+}
 
 void AInteractableActor::ServerOnInteractionBegin_Implementation(UInteractionManager* InteractingManager)
 {
-	FStateTreeEvent SendEvent;
-	SendEvent.Tag = InteractionGameTags::Interaction_Type_Food;
-	StateTreeComponent->SendStateTreeEvent(SendEvent);
+	if (InteractionTarget->OnInteractionBegin.IsBound())
+		InteractionTarget->OnInteractionBegin.Broadcast(InteractingManager->OwnerController->GetPawn());
 	
+	FStateTreeEvent SendEvent;
+	SendEvent.Tag = InteractionGameTags::Interaction_Begin;
+	StateTreeComponent->SendStateTreeEvent(SendEvent);
+
 	InteractingManager->bIsInteracting = true;
+}
+
+void AInteractableActor::ServerOnInteractionUpdated_Implementation(UInteractionManager* InteractingManager, float InAlpha, int32 InRepeated, APawn* InteractionPawn)
+{
+	if (InteractionTarget->OnInteractionUpdated.IsBound())
+		InteractionTarget->OnInteractionUpdated.Broadcast(InAlpha, InRepeated, InteractionPawn);
+
+	FStateTreeEvent SendEvent;
+	SendEvent.Tag = InteractionGameTags::Interaction_Update;
+	StateTreeComponent->SendStateTreeEvent(SendEvent);
+}
+
+void AInteractableActor::ServerOnInteractionFinished_Implementation(UInteractionManager* InteractingManager, EInteractionResult InteractionResult)
+{
+	InteractionTarget->ApplyFinishMethod(InteractingManager, InteractionResult);
 }

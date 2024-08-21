@@ -1,16 +1,22 @@
-﻿
-#include "Components/InteractionTarget.h"
+﻿#include "Components/InteractionTarget.h"
 
+#include "InteractionGameplayTags.h"
 #include "InteractionLog.h"
 #include "Components/InteractorManager.h"
 #include "Components/SphereComponent.h"
+#include "Interfaces/Interface_Interaction.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Objects/DestroyOnFinish.h"
 #include "Objects/InteractionFinish.h"
 #include "Objects/ReactivateOnFinish.h"
 
 
-UInteractionTarget::UInteractionTarget()
+UInteractionTarget::UInteractionTarget(): OwnerReference(nullptr),
+                                          InnerZone(nullptr),
+                                          OuterZone(nullptr),
+                                          Target_Icon(),
+                                          InteractionFinishInstance(nullptr),
+                                          MarkerTargetComponent(nullptr)
 {
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
@@ -55,8 +61,8 @@ void UInteractionTarget::BeginPlay()
 	ConstructHighlightedComponents();
 	SelectMarkerComponent();
 
-	OnInteractionBegin.AddDynamic(this,&UInteractionTarget::OnInteractionBeginEvent);
-	OnInteractionEnd.AddDynamic(this,&UInteractionTarget::OnInteractionEndEvent);
+	OnInteractionBegin.AddDynamic(this, &UInteractionTarget::OnInteractionBeginEvent);
+	OnInteractionEnd.AddDynamic(this, &UInteractionTarget::OnInteractionEndEvent);
 }
 
 void UInteractionTarget::ConstructOwnerEssentials()
@@ -177,11 +183,11 @@ void UInteractionTarget::AssignInteractor(bool bIsAdd, APlayerController* Assign
 {
 	if (bIsAdd)
 	{
-		AssignedInteractors.AddUnique(AssignedController);
+		AssignedControllers.AddUnique(AssignedController);
 	}
 	else
 	{
-		AssignedInteractors.Remove(AssignedController);
+		AssignedControllers.Remove(AssignedController);
 	}
 }
 
@@ -194,45 +200,86 @@ void UInteractionTarget::OnDeactivated()
 	OuterZone->SetHiddenInGame(true);
 }
 
+void UInteractionTarget::ApplyFinishMethod(UInteractionManager* InteractingManager, EInteractionResult InteractionResult)
+{
+	InteractingManager->bIsInteracting = false;
+
+	if (OwnerReference->GetClass()->ImplementsInterface(UInterface_Interaction::StaticClass()))
+	{
+		IInterface_Interaction::Execute_ResetData(OwnerReference);
+	}
+
+	if (OnInteractionEnd.IsBound())
+		OnInteractionEnd.Broadcast(EInteractionResult::Completed, InteractingManager->OwnerController->GetPawn());
+
+	if (OwnerReference->GetClass()->ImplementsInterface(UInterface_Interaction::StaticClass()))
+	{
+		FStateTreeEvent SendEvent;
+		SendEvent.Tag = InteractionGameTags::Interaction_End;
+		IInterface_Interaction::Execute_SendEvent(OwnerReference, SendEvent);
+	}
+
+	InteractionFinishExecute(InteractingManager, InteractionResult);
+}
+
+void UInteractionTarget::InteractionFinishExecute(UInteractionManager* InteractingManager, EInteractionResult InteractionResult)
+{
+	if (IsValid(InteractionFinishInstance))
+	{
+		InteractionFinishInstance->InitializeOnFinish(InteractingManager, this);
+		InteractionFinishInstance->Execute(InteractionResult);
+	}
+}
+
 void UInteractionTarget::OnInnerZoneBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
                                                  const FHitResult& SweepResult)
 {
-	UInteractionManager* ManagerInteractor;
-	if (!TryGetInteractorComponents(OtherActor, ManagerInteractor))
+	UInteractionManager* InteractionManager;
+	if (!TryGetInteractorComponents(OtherActor, InteractionManager))
 		return;
 
-	ManagerInteractor->ServerUpdateInteractionTargets(true, this);
+	InteractionManager->ServerUpdateInteractionTargets(true, this);
+
+	//약간의 딜레이를 주고 인터랙션 활성화를 확인합니다.
+	// GetWorld()->GetTimerManager().SetTimerForNextTick([this, InteractionManager]()
+	// {
+	// 	AInteractableActor* InteractableActor = Cast<AInteractableActor>(GetOwner());
+	// 	if (InteractableActor && InteractionManager->BestInteractionTarget == this)
+	// 	{
+	// 		InteractableActor->SetEnableInteractivity(true);
+	// 	}
+	// });
 }
 
 void UInteractionTarget::OnInnerZoneEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	UInteractionManager* ManagerInteractor;
-	if (!TryGetInteractorComponents(OtherActor, ManagerInteractor))
+	UInteractionManager* InteractionManager;
+	if (!TryGetInteractorComponents(OtherActor, InteractionManager))
 		return;
 
-	ManagerInteractor->ServerUpdateInteractionTargets(false, this);
+	InteractionManager->ServerUpdateInteractionTargets(false, this);
+	
 }
 
 void UInteractionTarget::OnOuterZoneBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
                                                  const FHitResult& SweepResult)
 {
-	UInteractionManager* ManagerInteractor;
-	if (!TryGetInteractorComponents(OtherActor, ManagerInteractor))
+	UInteractionManager* InteractionManager;
+	if (!TryGetInteractorComponents(OtherActor, InteractionManager))
 		return;
 
-	ManagerInteractor->ServerUpdatePointOfInterests(true, this);
-	ManagerInteractor->ServerRequestAssignInteractor(true, this);
+	InteractionManager->ServerUpdatePointOfInterests(true, this);
+	InteractionManager->ServerRequestAssignInteractor(true, this);
 }
 
 void UInteractionTarget::OnOuterZoneEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-	UInteractionManager* ManagerInteractor;
-
-	if (!TryGetInteractorComponents(OtherActor, ManagerInteractor))
+	UInteractionManager* InteractionManager;
+	if (!TryGetInteractorComponents(OtherActor, InteractionManager))
 		return;
 
-	ManagerInteractor->ServerUpdatePointOfInterests(false, this);
-	ManagerInteractor->ServerRequestAssignInteractor(false, this);
+	InteractionManager->ServerUpdatePointOfInterests(false, this);
+	InteractionManager->ServerRequestAssignInteractor(false, this);
 }
 
 bool UInteractionTarget::TryGetInteractorComponents(AActor* OtherActor, UInteractionManager*& OutManagerInteractor)
@@ -262,11 +309,13 @@ void UInteractionTarget::OnInteractionBeginEvent(APawn* InInteractorPawn)
 	if (!GetOwner()->HasAuthority())
 		return;
 
+	bIsInteracting = true;
+
 	// 네트워크 처리 방법이 상호작용 중 비활성화(DisableWhileInteracting)로 설정된 경우
 	if (NetworkHandleMethod == EInteractionNetworkHandleMethod::DisableWhileInteracting)
 	{
 		// 할당된 모든 상호작용자(AssignedInteractors)를 순회하며 처리
-		for (AController* AssignedController : AssignedInteractors)
+		for (AController* AssignedController : AssignedControllers)
 		{
 			// 상호작용을 시작한 Pawn과 같은 Pawn을 가진 Interactor는 처리하지 않음
 			if (AssignedController->GetPawn() == InInteractorPawn)
@@ -287,24 +336,28 @@ void UInteractionTarget::OnInteractionEndEvent(EInteractionResult InInteractionR
 	if (!GetOwner()->HasAuthority())
 		return;
 
+	if (GetOwner()->GetClass()->ImplementsInterface(UInterface_Interaction::StaticClass()))
+	{
+		IInterface_Interaction::Execute_SetEnableInteractivity(GetOwner(), false);
+	}
+
+	bIsInteracting = false;
+
 	// 네트워크 처리 방법이 상호작용 중 비활성화(DisableWhileInteracting)로 설정된 경우
 	if (NetworkHandleMethod == EInteractionNetworkHandleMethod::DisableWhileInteracting)
 	{
 		// 할당된 모든 상호작용자(AssignedInteractors)를 순회하며 처리
-		for (AController* AssignedController : AssignedInteractors)
+		for (AController* AssignedController : AssignedControllers)
 		{
 			if (AssignedController->GetPawn() != InInteractorPawn)
 				continue;
 
-			// 현재 상호작용자를 위한 InteractorManager 컴포넌트를 가져옴
-			UInteractionManager* ManagerInteractor = AssignedController->GetComponentByClass<UInteractionManager>();
-			if (!ManagerInteractor->DeactivatedTargets.Contains(this)) continue;
+			UInteractionManager* InteractionManager = AssignedController->GetComponentByClass<UInteractionManager>();
+			if (!InteractionManager->DeactivatedTargets.Contains(this)) continue;
 
-			// 상호작용 종료 방법에 따라 필요한 추가 처리를 수행
-			ManagerInteractor->ApplyFinishMethod(this, InInteractionResult);
+			ApplyFinishMethod(InteractionManager, InInteractionResult);
 
-			// 비활성화된 타겟 리스트에서 현재 타겟을 제거
-			ManagerInteractor->RemoveFromDeactivatedTargets(this);
+			InteractionManager->RemoveFromDeactivatedTargets(this);
 		}
 	}
 }
