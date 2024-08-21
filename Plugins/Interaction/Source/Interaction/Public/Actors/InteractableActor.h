@@ -98,6 +98,7 @@ private:
 	UPROPERTY(BlueprintReadOnly, Category="Interactable Actor", meta=(AllowPrivateAccess=true))
 	FKey LastPressedKey;
 
+public:
 	//현재 눌린시간
 	UPROPERTY(BlueprintReadWrite, Category="Interactable Actor", meta=(AllowPrivateAccess=true))
 	float CurrentHoldTime;

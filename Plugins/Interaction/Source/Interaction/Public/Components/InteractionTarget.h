@@ -5,6 +5,7 @@
 #include "Components/ActorComponent.h"
 #include "InteractionTarget.generated.h"
 
+class AInteractableActor;
 class UInteractionFinish;
 class UInteractionManager;
 class USphereComponent;
@@ -35,7 +36,7 @@ protected:
 public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-
+	
 	/*========================================================================================
 	*	SetUp
 	=========================================================================================*/
@@ -378,7 +379,7 @@ public:
 	/*디버그 모드 활성화 여부*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Interaction Target|Debug")
 	bool bEnableDebug = true;
-
+	
 
 	/*========================================================================================
 	*	Delegate
@@ -403,4 +404,6 @@ public:
 	// 상호작용 비활성화 델리게이트
 	UPROPERTY(BlueprintAssignable, BlueprintCallable, Category="Manager Interaction Target|Delegate")
 	FOnInteractionDeactivated OnInteractionDeactivated;
+
+	
 };

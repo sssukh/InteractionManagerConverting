@@ -2,6 +2,7 @@
 
 #include "InteractionGameplayTags.h"
 #include "InteractionLog.h"
+#include "Actors/InteractableActor.h"
 #include "Components/InteractorManager.h"
 #include "Components/SphereComponent.h"
 #include "Interfaces/Interface_Interaction.h"
@@ -63,6 +64,7 @@ void UInteractionTarget::BeginPlay()
 
 	OnInteractionBegin.AddDynamic(this, &UInteractionTarget::OnInteractionBeginEvent);
 	OnInteractionEnd.AddDynamic(this, &UInteractionTarget::OnInteractionEndEvent);
+
 }
 
 void UInteractionTarget::ConstructOwnerEssentials()

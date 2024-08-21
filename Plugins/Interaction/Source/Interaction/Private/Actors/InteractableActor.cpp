@@ -136,6 +136,7 @@ void AInteractableActor::HandleHoldInteraction(UInteractionManager* InteractingM
 			ServerOnInteractionFinished(InteractingManager, EInteractionResult::Completed);
 		}
 	}
+	// 키 뗌
 	else
 	{
 		if (CurrentHoldTime == 0.0f)
@@ -152,14 +153,19 @@ void AInteractableActor::HandleHoldInteraction(UInteractionManager* InteractingM
 			if (CurrentHoldTime == 0.0f)
 			{
 				OwnedInteractionWidget->PlayInteractionCompletedAnimation(EInteractionResult::Canceled);
-				ServerOnInteractionFinished(InteractingManager, EInteractionResult::Canceled);
+				// 지금으로써는 Cancel이던 Completed이던 차이가 없다.
+				// 중간에 Cancel 하는 부분을 다 지운다면 여기를 Cancel로 사용해도 된다.
+				// ServerOnInteractionFinished(InteractingManager, EInteractionResult::Canceled);
+				ServerOnInteractionFinished(InteractingManager, EInteractionResult::Completed);
+
 			}
 			else
 			{
 				OnInteractionUpdated(InteractingManager, InteractionRatio, 0);
+				// 중간에 손을 떼면 InteractionEnd Cancel 보내는 것 차단.
 				if (InteractionTarget->CancelOnRelease())
 				{
-					ServerOnInteractionFinished(InteractingManager, EInteractionResult::Canceled);
+					// ServerOnInteractionFinished(InteractingManager, EInteractionResult::Canceled);
 				}
 			}
 		}
@@ -281,8 +287,9 @@ void AInteractableActor::ClientResetData_Implementation()
 {
 	bKeyJustPressed = false;
 	LastPressedKey = FKey();
-	CurrentHoldTime = 0.0f;
-	Repeated = 0;
+	// 현재 Progress 초기화되는 것 차단
+	// CurrentHoldTime = 0.0f;
+	// Repeated = 0;
 }
 
 void AInteractableActor::ServerOnInteractionBegin_Implementation(UInteractionManager* InteractingManager)

@@ -128,6 +128,7 @@ void UUW_InteractionTarget::OnWidgetNewTarget(bool bIsNewTarget)
 			bIsInteractionState = true;
 			PlayAnimationForward(SlideUp);
 		}
+	
 	}
 	else
 	{

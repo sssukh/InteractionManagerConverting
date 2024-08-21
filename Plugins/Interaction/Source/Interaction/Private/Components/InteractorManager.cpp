@@ -3,6 +3,7 @@
 #include "InteractionLog.h"
 
 #include "EnhancedInputSubsystems.h"
+#include "Actors/InteractableActor.h"
 #include "Components/InteractionTarget.h"
 #include "Components/PostProcessComponent.h"
 #include "Components/SphereComponent.h"
@@ -116,6 +117,10 @@ void UInteractionManager::TickComponent(float DeltaTime, ELevelTick TickType, FA
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+	for (UInteractionTarget* Target : InteractionTargets)
+	{
+		GEngine->AddOnScreenDebugMessage(-1,0.0f,FColor::Green,FString::Printf(TEXT("%s 's CurrentHoldTime : %f"),*Target->GetName(),Cast<AInteractableActor>(Target->GetOwner())->CurrentHoldTime));
+	}
 	if (GetOwner()->HasAuthority())
 	{
 		UInteractionTarget* NearTarget = FindBestInteractable();
@@ -218,11 +223,16 @@ void UInteractionManager::UpdateBestInteractable(UInteractionTarget* NewTarget)
 
 			if (bIsInteracting)
 			{
-				bIsInteracting = false;
+				// 임시 주석
+				// 현재 고개를 돌려서 BestInteractionTarget이 변경되면 Cancel보내는 것 차단.
+				//
+				// Cancel된 상태에서 
+				// bIsInteracting = false;
+				//
+				// if (BestInteractionTarget->OnInteractionEnd.IsBound())
+				// 	BestInteractionTarget->OnInteractionEnd.Broadcast(EInteractionResult::Canceled, OwnerController->GetPawn());
 
-				if (BestInteractionTarget->OnInteractionEnd.IsBound())
-					BestInteractionTarget->OnInteractionEnd.Broadcast(EInteractionResult::Canceled, OwnerController->GetPawn());
-
+				// Client Reset Data 호출
 				if (BestInteractionTarget->OwnerReference->GetClass()->ImplementsInterface(UInterface_Interaction::StaticClass()))
 					IInterface_Interaction::Execute_ResetData(BestInteractionTarget->OwnerReference);
 			}
@@ -239,10 +249,10 @@ void UInteractionManager::UpdateBestInteractable(UInteractionTarget* NewTarget)
 
 			if (bIsInteracting)
 			{
-				bIsInteracting = false;
+				// bIsInteracting = false;
 
-				if (BestInteractionTarget->OnInteractionEnd.IsBound())
-					BestInteractionTarget->OnInteractionEnd.Broadcast(EInteractionResult::Canceled, OwnerController->GetPawn());
+				// if (BestInteractionTarget->OnInteractionEnd.IsBound())
+				// 	BestInteractionTarget->OnInteractionEnd.Broadcast(EInteractionResult::Canceled, OwnerController->GetPawn());
 
 				if (BestInteractionTarget->GetOwner()->GetClass()->ImplementsInterface(UInterface_Interaction::StaticClass()))
 					IInterface_Interaction::Execute_ResetData(BestInteractionTarget->GetOwner());
@@ -335,6 +345,17 @@ void UInteractionManager::OnNewTargetSelectedClientSide(UInteractionTarget* NewT
 		CurrentInteractionMarker->SetInteractionKeyText(TargetInteractionKeys[0]);
 
 		CurrentInteractionMarker->OnWidgetNewTarget(true); // 위젯에 새로운 대상이 선택되었음을 알림
+
+		
+		// 추가한 부분 진행도를 유지시켜준다.
+		// InteractableActor를 cast로 가져오는데 InteractionTarget에 Owner를 가져오는 함수를 만들까
+		float DeltaTime = Cast<AInteractableActor>(BestInteractionTarget->GetOwner())->CurrentHoldTime;
+		float NormalizedHoldTime = UKismetMathLibrary::NormalizeToRange(DeltaTime, 0.0f, BestInteractionTarget->HoldSeconds);
+		float InteractionRatio = FMath::Min(NormalizedHoldTime, 1.0f);
+		
+		CurrentInteractionMarker->SetInteractionPercent(InteractionRatio);
+		
+		// 추가한 부분 끝
 	}
 	// 상호작용 대상이 선택 해제되었을 경우
 	else

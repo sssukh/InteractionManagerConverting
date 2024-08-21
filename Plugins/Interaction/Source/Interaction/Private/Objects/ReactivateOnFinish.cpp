@@ -30,6 +30,9 @@ void UReactivateOnFinish::Execute(EInteractionResult InteractionResult)
 
 		InteractionTarget->bInteractionEnabled = false;
 
+		// 
+		if(InteractionResult == EInteractionResult::Completed)
+			InteractionTarget->bIsInteracting = false;
 		if (UKismetSystemLibrary::K2_IsValidTimerHandle(PendingTarget_TimerHandle)) return;
 
 		GetWorld()->GetTimerManager().SetTimer(PendingTarget_TimerHandle, this, &UReactivateOnFinish::CheckForPendingTargets, PendingTargetCheckInterval, true);
